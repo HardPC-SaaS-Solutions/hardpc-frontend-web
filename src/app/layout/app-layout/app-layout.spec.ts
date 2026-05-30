@@ -1,19 +1,23 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { RouterTestingModule } from '@angular/router/testing';
+import { CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
 
-import { AppLayout } from './app-layout';
+import { AppLayoutComponent } from './app-layout';
 
-describe('AppLayout', () => {
-  let component: AppLayout;
-  let fixture: ComponentFixture<AppLayout>;
+describe('AppLayoutComponent', () => {
+  let component: AppLayoutComponent;
+  let fixture: ComponentFixture<AppLayoutComponent>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [AppLayout],
+      declarations: [AppLayoutComponent],
+      imports: [RouterTestingModule],
+      schemas: [CUSTOM_ELEMENTS_SCHEMA],
     }).compileComponents();
 
-    fixture = TestBed.createComponent(AppLayout);
+    fixture = TestBed.createComponent(AppLayoutComponent);
     component = fixture.componentInstance;
-    await fixture.whenStable();
+    fixture.detectChanges();
   });
 
   it('should create', () => {

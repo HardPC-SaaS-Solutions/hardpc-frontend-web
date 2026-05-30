@@ -1,1 +1,26 @@
-<p>topbar works!</p>
+<header class="h-20 bg-white shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] flex items-center justify-between px-8 z-10">
+
+  <div>
+    <h1 class="text-2xl font-bold text-gray-800">Resumen del Sistema</h1>
+  </div>
+
+  <div class="flex items-center gap-5">
+
+    <button class="p-2 text-gray-400 hover:text-blue-600 transition-colors relative">
+      <i class="pi pi-bell text-xl"></i>
+      <span class="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white"></span>
+    </button>
+
+    <div class="flex items-center gap-3 pl-5 border-l border-gray-200 cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition-colors">
+      <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold text-lg">
+        F
+      </div>
+      <div class="flex flex-col hidden sm:flex">
+        <span class="text-sm font-bold text-gray-700">Fabrizio</span>
+        <span class="text-xs text-gray-500 font-medium">Administrador</span>
+      </div>
+      <i class="pi pi-angle-down text-gray-400 text-sm ml-1"></i>
+    </div>
+
+  </div>
+</header>
