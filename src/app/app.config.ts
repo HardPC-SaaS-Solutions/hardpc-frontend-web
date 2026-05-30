@@ -3,15 +3,21 @@ import { provideRouter } from '@angular/router';
 import { routes } from './app.routes';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 
+// 1. Importamos el nuevo motor de PrimeNG y tu tema elegido (Lara)
+import { providePrimeNG } from 'primeng/config';
+import Lara from '@primeng/themes/lara';
+
 export const appConfig: ApplicationConfig = {
   providers: [
-    // 1. Optimización de rendimiento (El mesero agrupador)
     provideZoneChangeDetection({ eventCoalescing: true }),
-
-    // 2. Sistema de rutas para cambiar de pantallas
     provideRouter(routes),
+    provideHttpClient(withInterceptors([])),
 
-    // 3. Cliente HTTP nativo para consumir la API de HardPC
-    provideHttpClient(withInterceptors([]))
+    // 2. Encendemos PrimeNG con el tema configurado
+    providePrimeNG({
+        theme: {
+            preset: Lara
+        }
+    })
   ]
 };
