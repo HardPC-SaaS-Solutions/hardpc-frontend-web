@@ -5,7 +5,7 @@
       <h2 class="text-2xl font-bold text-gray-800">Categorías</h2>
       <p class="text-sm text-gray-500 font-medium">Clasificación principal del catálogo de productos</p>
     </div>
-    <p-button label="Nueva Categoría" icon="pi pi-plus" styleClass="p-button-primary shadow-md shadow-blue-500/30"></p-button>
+    <p-button label="Nueva Categoría" icon="pi pi-plus" styleClass="p-button-primary shadow-md shadow-blue-500/30" (click)="abrirModalNuevo()"></p-button>
   </div>
 
   <p-table
@@ -57,7 +57,7 @@
 
         <td class="text-center">
           <div class="flex items-center justify-center gap-1">
-            <p-button icon="pi pi-pencil" styleClass="p-button-rounded p-button-text p-button-info p-button-sm"></p-button>
+            <p-button icon="pi pi-pencil" styleClass="p-button-rounded p-button-text p-button-info p-button-sm" (click)="abrirModalEditar(cat)"></p-button>
             <p-button icon="pi pi-trash" styleClass="p-button-rounded p-button-text p-button-danger p-button-sm"></p-button>
           </div>
         </td>
@@ -75,3 +75,51 @@
   </p-table>
 
 </div>
+
+<p-dialog
+  [header]="modoEdicion ? 'Editar Categoría' : 'Nueva Categoría'"
+  [(visible)]="modalVisible"
+  [modal]="true"
+  [style]="{ width: '450px' }"
+  [draggable]="false"
+  [resizable]="false"
+  styleClass="p-fluid">
+
+  <form [formGroup]="categoriaForm" (ngSubmit)="guardarCategoria()" class="mt-4 flex flex-col gap-4">
+
+    <div class="flex flex-col gap-1">
+      <label for="nombre" class="font-medium text-gray-700 text-sm">Nombre de la Categoría <span class="text-red-500">*</span></label>
+      <input pInputText id="nombre" formControlName="nombre" placeholder="Ej. Laptops, Monitores..." autocomplete="off" />
+      <small class="text-red-500" *ngIf="categoriaForm.get('nombre')?.invalid && categoriaForm.get('nombre')?.touched">
+        El nombre es obligatorio y no debe exceder 100 caracteres.
+      </small>
+    </div>
+
+    <div class="flex flex-col gap-1">
+      <label for="iconoUrl" class="font-medium text-gray-700 text-sm">URL del Ícono</label>
+      <input pInputText id="iconoUrl" formControlName="iconoUrl" placeholder="https://ejemplo.com/icono.png" autocomplete="off" />
+    </div>
+
+    <div class="flex flex-col gap-1">
+      <label for="descripcion" class="font-medium text-gray-700 text-sm">Descripción</label>
+      <textarea pTextarea id="descripcion" formControlName="descripcion" rows="3" placeholder="Detalle de los productos en esta categoría..."></textarea>
+    </div>
+
+    <div class="flex items-center justify-between bg-gray-50 p-3 rounded-lg border border-gray-100">
+      <div>
+        <span class="font-medium text-gray-700 text-sm block">Estado de la Categoría</span>
+        <span class="text-xs text-gray-500">¿Estará visible al realizar ventas o ingresos?</span>
+      </div>
+      <p-toggleSwitch formControlName="estado"></p-toggleSwitch>
+    </div>
+
+  </form>
+
+  <ng-template pTemplate="footer">
+    <div class="flex justify-end gap-2 mt-4">
+      <p-button label="Cancelar" icon="pi pi-times" styleClass="p-button-text p-button-secondary" (click)="cerrarModal()"></p-button>
+      <p-button [label]="modoEdicion ? 'Actualizar' : 'Guardar'" icon="pi pi-check" styleClass="p-button-primary" (click)="guardarCategoria()"></p-button>
+    </div>
+  </ng-template>
+
+</p-dialog>
