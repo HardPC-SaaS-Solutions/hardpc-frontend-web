@@ -1,8 +1,11 @@
 import { Component } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { RouterModule } from '@angular/router';
 
 @Component({
   selector: 'app-sidebar',
   standalone: true,
-  templateUrl: './sidebar.component.html',
+  imports: [CommonModule, RouterModule],
+  templateUrl: './sidebar.component.html'
 })
-export class SidebarComponent {}
+export class SidebarComponent { }

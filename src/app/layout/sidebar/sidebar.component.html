@@ -1,26 +1,83 @@
-<aside class="w-64 bg-gray-900 text-white h-full flex flex-col shadow-2xl transition-all duration-300">
+<aside class="w-64 bg-gray-900 h-full flex flex-col shadow-xl text-gray-300">
 
-  <div class="h-20 flex items-center justify-center border-b border-gray-800">
-    <span class="text-2xl font-black tracking-wider text-blue-500">
+  <div class="h-20 flex items-center px-8 border-b border-gray-800">
+    <h1 class="text-2xl font-black tracking-wider text-blue-500">
       HARD<span class="text-white">PC</span>
-    </span>
+    </h1>
   </div>
 
-  <nav class="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
-    <a class="flex items-center gap-3 px-4 py-3 bg-blue-600 rounded-lg text-white font-medium transition-colors cursor-pointer shadow-md shadow-blue-500/20">
+  <nav class="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto custom-scrollbar">
+
+    <div class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 px-4 mt-2">Principal</div>
+
+    <a routerLink="/" [routerLinkActiveOptions]="{ exact: true }" routerLinkActive="bg-blue-600 text-white shadow-lg shadow-blue-500/30"
+      class="flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all hover:bg-gray-800 hover:text-white font-medium cursor-pointer">
       <i class="pi pi-home text-lg"></i>
       <span>Dashboard</span>
     </a>
 
-    <a class="flex items-center gap-3 px-4 py-3 text-gray-400 hover:bg-gray-800 hover:text-white rounded-lg font-medium transition-colors cursor-pointer">
+    <div class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 px-4 mt-6">Transacciones</div>
+
+    <a routerLink="/ventas" routerLinkActive="bg-blue-600 text-white shadow-lg shadow-blue-500/30"
+      class="flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all hover:bg-gray-800 hover:text-white font-medium cursor-pointer">
       <i class="pi pi-shopping-cart text-lg"></i>
       <span>Ventas</span>
     </a>
 
-    <a class="flex items-center gap-3 px-4 py-3 text-gray-400 hover:bg-gray-800 hover:text-white rounded-lg font-medium transition-colors cursor-pointer">
-      <i class="pi pi-box text-lg"></i>
-      <span>Inventario</span>
+    <a routerLink="/compras" routerLinkActive="bg-blue-600 text-white shadow-lg shadow-blue-500/30"
+      class="flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all hover:bg-gray-800 hover:text-white font-medium cursor-pointer">
+      <i class="pi pi-truck text-lg"></i>
+      <span>Ingresos (Compras)</span>
     </a>
+
+    <div class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 px-4 mt-6">Inventario</div>
+
+    <a routerLink="/productos" routerLinkActive="bg-blue-600 text-white shadow-lg shadow-blue-500/30"
+      class="flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all hover:bg-gray-800 hover:text-white font-medium cursor-pointer">
+      <i class="pi pi-desktop text-lg"></i>
+      <span>Productos</span>
+    </a>
+
+    <a routerLink="/stock-series" routerLinkActive="bg-blue-600 text-white shadow-lg shadow-blue-500/30"
+      class="flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all hover:bg-gray-800 hover:text-white font-medium cursor-pointer">
+      <i class="pi pi-barcode text-lg"></i>
+      <span>Stock y Series</span>
+    </a>
+
+    <a routerLink="/movimientos" routerLinkActive="bg-blue-600 text-white shadow-lg shadow-blue-500/30"
+      class="flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all hover:bg-gray-800 hover:text-white font-medium cursor-pointer">
+      <i class="pi pi-sync text-lg"></i>
+      <span>Movimientos</span>
+    </a>
+
+    <div class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 px-4 mt-6">Directorio</div>
+
+    <a routerLink="/clientes" routerLinkActive="bg-blue-600 text-white shadow-lg shadow-blue-500/30"
+      class="flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all hover:bg-gray-800 hover:text-white font-medium cursor-pointer">
+      <i class="pi pi-users text-lg"></i>
+      <span>Clientes</span>
+    </a>
+
+    <a routerLink="/proveedores" routerLinkActive="bg-blue-600 text-white shadow-lg shadow-blue-500/30"
+      class="flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all hover:bg-gray-800 hover:text-white font-medium cursor-pointer">
+      <i class="pi pi-building text-lg"></i>
+      <span>Proveedores</span>
+    </a>
+
+    <div class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 px-4 mt-6">Administración</div>
+
+    <a routerLink="/usuarios" routerLinkActive="bg-blue-600 text-white shadow-lg shadow-blue-500/30"
+      class="flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all hover:bg-gray-800 hover:text-white font-medium cursor-pointer">
+      <i class="pi pi-id-card text-lg"></i>
+      <span>Usuarios y Roles</span>
+    </a>
+
+    <a routerLink="/configuracion" routerLinkActive="bg-blue-600 text-white shadow-lg shadow-blue-500/30"
+      class="flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all hover:bg-gray-800 hover:text-white font-medium cursor-pointer">
+      <i class="pi pi-cog text-lg"></i>
+      <span>Catálogos Maestros</span>
+    </a>
+
   </nav>
 
 </aside>
