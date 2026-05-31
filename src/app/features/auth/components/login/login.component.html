@@ -1,0 +1,66 @@
+<div class="min-h-screen flex items-center justify-center bg-gray-50 font-sans px-4">
+
+  <div class="max-w-md w-full bg-white rounded-2xl shadow-xl overflow-hidden">
+
+    <div class="bg-gray-900 py-8 text-center">
+      <h1 class="text-4xl font-black tracking-wider text-blue-500 mb-2">
+        HARD<span class="text-white">PC</span>
+      </h1>
+      <p class="text-gray-400 text-sm font-medium">Sistema de Gestión Empresarial</p>
+    </div>
+
+    <div class="p-8">
+      <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">Iniciar Sesión</h2>
+
+      <!-- Conectamos el form con la variable de TypeScript -->
+      <form [formGroup]="loginForm" (ngSubmit)="iniciarSesion()" class="space-y-5">
+
+        <!-- Campo Usuario o Correo -->
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-1">Usuario o Correo Electrónico</label>
+          <div class="relative">
+            <!-- Cambiamos el icono a un usuario -->
+            <i class="pi pi-user absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+            <input
+              type="text"
+              formControlName="usernameOrEmail"
+              class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+              placeholder="admin / admin@hardpc.com"
+            >
+          </div>
+          <!-- Mensajes de error del identificador -->
+          <div *ngIf="usernameOrEmailControl?.invalid && (usernameOrEmailControl?.dirty || usernameOrEmailControl?.touched)" class="text-red-500 text-xs mt-1 font-medium">
+            <span *ngIf="usernameOrEmailControl?.errors?.['required']">Ingresa tu usuario o correo.</span>
+          </div>
+        </div>
+
+        <!-- Campo Contraseña -->
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-1">Contraseña</label>
+          <div class="relative">
+            <i class="pi pi-lock absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+            <input
+              type="password"
+              formControlName="password"
+              class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+              placeholder="••••••••"
+            >
+          </div>
+          <!-- Mensajes de error avanzados de la contraseña -->
+          <div *ngIf="passwordControl?.invalid && (passwordControl?.dirty || passwordControl?.touched)" class="text-red-500 text-xs mt-1 font-medium leading-tight">
+            <span *ngIf="passwordControl?.errors?.['required']">La contraseña es obligatoria.<br></span>
+            <span *ngIf="passwordControl?.errors?.['pattern']">La contraseña tiene una sintaxis incorrecta.</span>
+          </div>
+        </div>
+
+        <!-- Botón Ingresar -->
+        <button
+          type="submit"
+          class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg shadow-lg shadow-blue-500/30 transition-all active:scale-[0.98] mt-4">
+          Ingresar al Sistema
+        </button>
+      </form>
+    </div>
+
+  </div>
+</div>
