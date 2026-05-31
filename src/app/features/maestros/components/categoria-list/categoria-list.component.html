@@ -1,0 +1,77 @@
+<div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+
+  <div class="flex justify-between items-center mb-6">
+    <div>
+      <h2 class="text-2xl font-bold text-gray-800">Categorías</h2>
+      <p class="text-sm text-gray-500 font-medium">Clasificación principal del catálogo de productos</p>
+    </div>
+    <p-button label="Nueva Categoría" icon="pi pi-plus" styleClass="p-button-primary shadow-md shadow-blue-500/30"></p-button>
+  </div>
+
+  <p-table
+    #dt
+    [value]="categorias"
+    [lazy]="true"
+    (onLazyLoad)="cargarCategorias($event)"
+    [rows]="rowsPerPage"
+    [totalRecords]="totalRecords"
+    [paginator]="true"
+    [loading]="loading"
+    [rowsPerPageOptions]="[5, 10, 20]"
+    [showCurrentPageReport]="true"
+    currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} registros"
+    styleClass="p-datatable-sm"
+    class="border-t border-gray-100"
+  >
+    <ng-template pTemplate="header">
+      <tr>
+        <th class="w-16">ID</th>
+        <th class="w-16">Ícono</th>
+        <th>Nombre</th>
+        <th>Descripción</th>
+        <th class="w-24">Estado</th>
+        <th class="w-28 text-center">Acciones</th>
+      </tr>
+    </ng-template>
+
+    <ng-template pTemplate="body" let-cat>
+      <tr class="hover:bg-gray-50 transition-colors">
+        <td class="font-semibold text-gray-700">{{ cat.id }}</td>
+
+        <td>
+          <div class="w-8 h-8 rounded bg-gray-100 flex items-center justify-center text-gray-400 overflow-hidden">
+            <i *ngIf="!cat.iconoUrl" class="pi pi-image text-sm"></i>
+            <img *ngIf="cat.iconoUrl" [src]="cat.iconoUrl" class="w-full h-full object-cover" alt="Icono">
+          </div>
+        </td>
+
+        <td class="font-bold text-gray-900">{{ cat.nombre }}</td>
+        <td class="text-gray-600 truncate max-w-[200px] text-sm">{{ cat.descripcion || '—' }}</td>
+
+        <td>
+          <p-tag
+            [severity]="cat.estado ? 'success' : 'danger'"
+            [value]="cat.estado ? 'Activo' : 'Inactivo'">
+          </p-tag>
+        </td>
+
+        <td class="text-center">
+          <div class="flex items-center justify-center gap-1">
+            <p-button icon="pi pi-pencil" styleClass="p-button-rounded p-button-text p-button-info p-button-sm"></p-button>
+            <p-button icon="pi pi-trash" styleClass="p-button-rounded p-button-text p-button-danger p-button-sm"></p-button>
+          </div>
+        </td>
+      </tr>
+    </ng-template>
+
+    <ng-template pTemplate="emptymessage">
+      <tr>
+        <td colspan="6" class="text-center py-8 text-gray-500 font-medium">
+          <i class="pi pi-inbox text-2xl mb-2 text-gray-400 block"></i>
+          No hay categorías registradas en el sistema.
+        </td>
+      </tr>
+    </ng-template>
+  </p-table>
+
+</div>
