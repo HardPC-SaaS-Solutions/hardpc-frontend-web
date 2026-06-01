@@ -13,11 +13,16 @@ import { InputTextModule } from 'primeng/inputtext';
 import { TextareaModule } from 'primeng/textarea';
 import { ToggleSwitchModule } from 'primeng/toggleswitch';
 
-// Nuevos Módulos para UX
+// Módulos de UI/UX
 import { ToastModule } from 'primeng/toast';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { MessageService, ConfirmationService } from 'primeng/api';
 
+/**
+ * @description Componente central para la gestión de categorías en el inventario de HardPC.
+ * Administra el listado paginado, creación, edición y control de estado (activación/desactivación)
+ * de las categorías de productos (ej. repuestos, suministros).
+ */
 @Component({
   selector: 'app-categoria-list',
   standalone: true,
@@ -38,38 +43,57 @@ import { MessageService, ConfirmationService } from 'primeng/api';
   templateUrl: './categoria-list.component.html'
 })
 export class CategoriaListComponent implements OnInit {
+  // Inyección de dependencias
   private categoriaService = inject(CategoriaService);
   private fb = inject(FormBuilder);
-  private messageService = inject(MessageService);             // <-- Inyectado
+  private messageService = inject(MessageService);
   private confirmationService = inject(ConfirmationService);
 
-  // Variables de la tabla
+  // --- ESTADO DE LA TABLA ---
+  /** Colección de categorías actuales renderizadas en la tabla. */
   categorias: CategoriaDTO[] = [];
+  /** Total de registros disponibles en la base de datos para la paginación. */
   totalRecords: number = 0;
+  /** Indicador de carga para la tabla de PrimeNG. */
   loading: boolean = true;
+  /** Cantidad de registros mostrados por página. */
   rowsPerPage: number = 10;
 
-  // Variables del Modal y Formulario
+  // --- ESTADO DEL FORMULARIO Y MODAL ---
+  /** Instancia del formulario reactivo para la gestión de datos. */
   categoriaForm!: FormGroup;
+  /** Controla la visibilidad de la ventana modal. */
   modalVisible: boolean = false;
+  /** Determina el contexto del modal: `true` para Edición, `false` para Creación. */
   modoEdicion: boolean = false;
+  /** Almacena el ID de la categoría en curso durante la edición. */
   idCategoriaActual: number | null = null;
 
+  /**
+   * @description Inicializa el componente construyendo la estructura del formulario.
+   */
   ngOnInit(): void {
     this.inicializarFormulario();
   }
 
-  // Reflejamos las validaciones exactas de tu DTO
+  /**
+   * @description Construye el formulario reactivo aplicando las validaciones del DTO.
+   * El campo 'estado' se excluye deliberadamente para gestionarse de forma programática.
+   */
   private inicializarFormulario(): void {
     this.categoriaForm = this.fb.group({
       nombre: ['', [Validators.required, Validators.maxLength(100)]],
       descripcion: ['', [Validators.maxLength(255)]],
-      iconoUrl: ['', [Validators.maxLength(500)]],
-      estado: [true] // Por defecto activo al crear
+      iconoUrl: ['', [Validators.maxLength(500)]]
     });
   }
 
-  // --- MÉTODOS DE LA TABLA ---
+  /**
+   * @description Carga el listado paginado de categorías desde la API.
+   * Diseñado para integrarse con el evento 'onLazyLoad' de PrimeNG, procesando
+   * automáticamente la paginación y la búsqueda global.
+   * @param event Objeto de evento emitido por la tabla PrimeNG.
+   */
   cargarCategorias(event: any): void {
     this.loading = true;
     const page = event.first ? event.first / event.rows : 0;
@@ -83,24 +107,32 @@ export class CategoriaListComponent implements OnInit {
         this.loading = false;
       },
       error: (err) => {
-        console.error('Error al traer categorías:', err);
+        console.error('Error al cargar categorías:', err);
+        this.messageService.add({ severity: 'error', summary: 'Error', detail: 'No se pudieron cargar las categorías' });
         this.loading = false;
       }
     });
   }
 
-  // --- MÉTODOS DEL MODAL ---
+  /**
+   * @description Prepara y despliega el modal en contexto de creación de un nuevo registro.
+   */
   abrirModalNuevo(): void {
     this.modoEdicion = false;
     this.idCategoriaActual = null;
-    this.categoriaForm.reset({ estado: true }); // Limpia y deja estado activo
+    this.categoriaForm.reset({ estado: true });
     this.modalVisible = true;
   }
 
+  /**
+   * @description Prepara y despliega el modal en contexto de edición, poblando el
+   * formulario con los datos de la categoría seleccionada.
+   * @param categoria Instancia del DTO seleccionada en la tabla.
+   */
   abrirModalEditar(categoria: CategoriaDTO): void {
     this.modoEdicion = true;
     this.idCategoriaActual = categoria.id!;
-    // Llenamos el formulario con los datos de la fila
+
     this.categoriaForm.patchValue({
       nombre: categoria.nombre,
       descripcion: categoria.descripcion,
@@ -110,56 +142,98 @@ export class CategoriaListComponent implements OnInit {
     this.modalVisible = true;
   }
 
+  /**
+   * @description Oculta la ventana modal sin aplicar cambios.
+   */
   cerrarModal(): void {
     this.modalVisible = false;
   }
 
-  // --- GUARDAR O ACTUALIZAR ---
+  /**
+   * @description Procesa la persistencia de datos. Valida el formulario y decide
+   * si ejecutar una creación (POST) o una actualización (PUT) según el contexto actual.
+   * Mantiene la integridad del estado lógico preexistente durante las ediciones.
+   */
   guardarCategoria(): void {
     if (this.categoriaForm.invalid) {
-      this.categoriaForm.markAllAsTouched(); // Pinta de rojo los campos vacíos
+      this.categoriaForm.markAllAsTouched();
       return;
     }
 
-    const categoriaData: CategoriaDTO = this.categoriaForm.value;
+    const formValues = this.categoriaForm.value;
 
     if (this.modoEdicion && this.idCategoriaActual) {
-      // Petición PUT
+      // Recupera el estado original de la categoría para evitar alteraciones accidentales.
+      const categoriaExistente = this.categorias.find(c => c.id === this.idCategoriaActual);
+      const categoriaData: CategoriaDTO = { ...formValues, estado: categoriaExistente?.estado };
+
       this.categoriaService.actualizar(this.idCategoriaActual, categoriaData).subscribe({
         next: () => {
           this.cerrarModal();
-          // Recargamos la tabla (simulamos un evento lazy)
           this.cargarCategorias({ first: 0, rows: this.rowsPerPage });
+          this.messageService.add({ severity: 'success', summary: 'Actualizado', detail: 'Categoría actualizada correctamente' });
         },
-        error: (err) => console.error('Error al actualizar', err)
+        error: () => this.messageService.add({ severity: 'error', summary: 'Error', detail: 'No se pudo actualizar la categoría' })
       });
     } else {
-      // Petición POST
+      // Fuerza el estado activo por defecto para nuevos registros.
+      const categoriaData: CategoriaDTO = { ...formValues, estado: true };
       this.categoriaService.crear(categoriaData).subscribe({
         next: () => {
           this.cerrarModal();
           this.cargarCategorias({ first: 0, rows: this.rowsPerPage });
+          this.messageService.add({ severity: 'success', summary: 'Creado', detail: 'Categoría registrada correctamente' });
         },
-        error: (err) => console.error('Error al crear', err)
+        error: () => this.messageService.add({ severity: 'error', summary: 'Error', detail: 'No se pudo crear la categoría' })
       });
     }
   }
 
+  /**
+   * @description Solicita confirmación y ejecuta la desactivación lógica de una categoría.
+   * @param categoria Instancia del DTO a desactivar.
+   */
   eliminarCategoria(categoria: CategoriaDTO): void {
     this.confirmationService.confirm({
-      message: `¿Estás seguro de que deseas eliminar la categoría <b>${categoria.nombre}</b>?`,
+      message: `¿Estás seguro de que deseas desactivar la categoría <b>${categoria.nombre}</b>?`,
       header: 'Confirmar Eliminación',
       icon: 'pi pi-exclamation-triangle',
-      acceptLabel: 'Sí, eliminar',
+      acceptLabel: 'Sí, desactivar',
       rejectLabel: 'Cancelar',
       acceptButtonStyleClass: 'p-button-danger',
       accept: () => {
         this.categoriaService.eliminar(categoria.id!).subscribe({
           next: () => {
             this.cargarCategorias({ first: 0, rows: this.rowsPerPage });
-            this.messageService.add({ severity: 'success', summary: 'Eliminado', detail: 'Categoría eliminada lógicamente' });
+            this.messageService.add({ severity: 'success', summary: 'Eliminado', detail: 'Categoría desactivada' });
           },
-          error: () => this.messageService.add({ severity: 'error', summary: 'Error', detail: 'No se pudo eliminar la categoría' })
+          error: () => this.messageService.add({ severity: 'error', summary: 'Error', detail: 'No se pudo desactivar la categoría' })
+        });
+      }
+    });
+  }
+
+  /**
+   * @description Solicita confirmación y reactiva una categoría previamente desactivada
+   * reutilizando el endpoint de actualización integral (PUT).
+   * @param categoria Instancia del DTO a reactivar.
+   */
+  restaurarCategoria(categoria: CategoriaDTO): void {
+    this.confirmationService.confirm({
+      message: `¿Estás seguro de que deseas reactivar la categoría <b>${categoria.nombre}</b>?`,
+      header: 'Confirmar Restauración',
+      icon: 'pi pi-info-circle',
+      acceptLabel: 'Sí, reactivar',
+      rejectLabel: 'Cancelar',
+      acceptButtonStyleClass: 'p-button-success',
+      accept: () => {
+        const categoriaRestaurada: CategoriaDTO = { ...categoria, estado: true };
+        this.categoriaService.actualizar(categoria.id!, categoriaRestaurada).subscribe({
+          next: () => {
+            this.cargarCategorias({ first: 0, rows: this.rowsPerPage });
+            this.messageService.add({ severity: 'success', summary: 'Restaurado', detail: 'Categoría reactivada' });
+          },
+          error: () => this.messageService.add({ severity: 'error', summary: 'Error', detail: 'No se pudo reactivar la categoría' })
         });
       }
     });

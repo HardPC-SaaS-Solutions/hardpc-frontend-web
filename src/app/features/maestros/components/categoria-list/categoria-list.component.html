@@ -5,7 +5,19 @@
       <h2 class="text-2xl font-bold text-gray-800">Categorías</h2>
       <p class="text-sm text-gray-500 font-medium">Clasificación principal del catálogo de productos</p>
     </div>
-    <p-button label="Nueva Categoría" icon="pi pi-plus" styleClass="p-button-primary shadow-md shadow-blue-500/30" (click)="abrirModalNuevo()"></p-button>
+
+    <div class="flex gap-3">
+      <span class="relative inline-block">
+        <i class="pi pi-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 z-10"></i>
+        <input
+          pInputText
+          type="text"
+          (input)="dt.filterGlobal($any($event.target).value, 'contains')"
+          placeholder="Buscar categoría..."
+          class="!pl-10 w-64" />
+      </span>
+      <p-button label="Nueva Categoría" icon="pi pi-plus" styleClass="p-button-primary shadow-md shadow-blue-500/30" (click)="abrirModalNuevo()"></p-button>
+    </div>
   </div>
 
   <p-table
@@ -25,23 +37,28 @@
   >
     <ng-template pTemplate="header">
       <tr>
-        <th class="w-16">ID</th>
+        <th class="w-16 text-center">N°</th>
         <th class="w-16">Ícono</th>
-        <th>Nombre</th>
+        <th class="w-64">Nombre</th>
         <th>Descripción</th>
         <th class="w-24">Estado</th>
         <th class="w-28 text-center">Acciones</th>
       </tr>
     </ng-template>
 
-    <ng-template pTemplate="body" let-cat>
-      <tr class="hover:bg-gray-50 transition-colors">
-        <td class="font-semibold text-gray-700">{{ cat.id }}</td>
+    <ng-template pTemplate="body" let-cat let-rowIndex="rowIndex">
+      <tr class="hover:bg-gray-50 transition-colors" [ngClass]="{'opacity-60': !cat.estado}">
+
+        <td class="font-semibold text-gray-500 text-center">{{ rowIndex + 1 }}</td>
 
         <td>
-          <div class="w-8 h-8 rounded bg-gray-100 flex items-center justify-center text-gray-400 overflow-hidden">
+          <div class="w-8 h-8 rounded bg-gray-100 flex items-center justify-center text-gray-400 overflow-hidden border border-gray-200" [ngClass]="{'grayscale opacity-50': !cat.estado}">
             <i *ngIf="!cat.iconoUrl" class="pi pi-image text-sm"></i>
-            <img *ngIf="cat.iconoUrl" [src]="cat.iconoUrl" class="w-full h-full object-cover" alt="Icono">
+            <img *ngIf="cat.iconoUrl"
+                 [src]="cat.iconoUrl"
+                 class="w-full h-full object-contain p-0.5"
+                 alt="Icono"
+                 (error)="cat.iconoUrl = ''">
           </div>
         </td>
 
@@ -57,8 +74,14 @@
 
         <td class="text-center">
           <div class="flex items-center justify-center gap-1">
-            <p-button icon="pi pi-pencil" styleClass="p-button-rounded p-button-text p-button-info p-button-sm" (click)="abrirModalEditar(cat)"></p-button>
-            <p-button icon="pi pi-trash" styleClass="p-button-rounded p-button-text p-button-danger p-button-sm" (click)="eliminarCategoria(cat)"></p-button>
+            <ng-container *ngIf="cat.estado">
+              <p-button icon="pi pi-pencil" styleClass="p-button-rounded p-button-text p-button-info p-button-sm" (click)="abrirModalEditar(cat)"></p-button>
+              <p-button icon="pi pi-trash" styleClass="p-button-rounded p-button-text p-button-danger p-button-sm" (click)="eliminarCategoria(cat)"></p-button>
+            </ng-container>
+
+            <ng-container *ngIf="!cat.estado">
+              <p-button icon="pi pi-refresh" styleClass="p-button-rounded p-button-text p-button-success p-button-sm" (click)="restaurarCategoria(cat)" pTooltip="Restaurar"></p-button>
+            </ng-container>
           </div>
         </td>
       </tr>
@@ -68,7 +91,7 @@
       <tr>
         <td colspan="6" class="text-center py-8 text-gray-500 font-medium">
           <i class="pi pi-inbox text-2xl mb-2 text-gray-400 block"></i>
-          No hay categorías registradas en el sistema.
+          No se encontraron categorías.
         </td>
       </tr>
     </ng-template>
@@ -97,20 +120,26 @@
 
     <div class="flex flex-col gap-1">
       <label for="iconoUrl" class="font-medium text-gray-700 text-sm">URL del Ícono</label>
-      <input pInputText id="iconoUrl" formControlName="iconoUrl" placeholder="https://ejemplo.com/icono.png" autocomplete="off" />
+      <div class="flex gap-2 items-center">
+        <div class="flex-1">
+          <input pInputText id="iconoUrl" formControlName="iconoUrl" placeholder="https://ejemplo.com/icono.png" autocomplete="off" class="w-full" />
+        </div>
+
+        <div class="w-10 h-10 rounded border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 overflow-hidden shadow-inner">
+          <i *ngIf="!categoriaForm.get('iconoUrl')?.value" class="pi pi-image text-gray-300 text-lg"></i>
+          <img *ngIf="categoriaForm.get('iconoUrl')?.value"
+               [src]="categoriaForm.get('iconoUrl')?.value"
+               class="w-full h-full object-contain p-1"
+               alt="Preview"
+               (error)="$any($event.target).style.display = 'none'"
+               (load)="$any($event.target).style.display = 'block'">
+        </div>
+      </div>
     </div>
 
     <div class="flex flex-col gap-1">
       <label for="descripcion" class="font-medium text-gray-700 text-sm">Descripción</label>
       <textarea pTextarea id="descripcion" formControlName="descripcion" rows="3" placeholder="Detalle de los productos en esta categoría..."></textarea>
-    </div>
-
-    <div class="flex items-center justify-between bg-gray-50 p-3 rounded-lg border border-gray-100">
-      <div>
-        <span class="font-medium text-gray-700 text-sm block">Estado de la Categoría</span>
-        <span class="text-xs text-gray-500">¿Estará visible al realizar ventas o ingresos?</span>
-      </div>
-      <p-toggleSwitch formControlName="estado"></p-toggleSwitch>
     </div>
 
   </form>
@@ -125,5 +154,4 @@
 </p-dialog>
 
 <p-toast position="top-right"></p-toast>
-
 <p-confirmDialog [style]="{width: '450px'}"></p-confirmDialog>
