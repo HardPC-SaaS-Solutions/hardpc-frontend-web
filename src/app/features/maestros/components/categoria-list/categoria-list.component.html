@@ -58,7 +58,7 @@
         <td class="text-center">
           <div class="flex items-center justify-center gap-1">
             <p-button icon="pi pi-pencil" styleClass="p-button-rounded p-button-text p-button-info p-button-sm" (click)="abrirModalEditar(cat)"></p-button>
-            <p-button icon="pi pi-trash" styleClass="p-button-rounded p-button-text p-button-danger p-button-sm"></p-button>
+            <p-button icon="pi pi-trash" styleClass="p-button-rounded p-button-text p-button-danger p-button-sm" (click)="eliminarCategoria(cat)"></p-button>
           </div>
         </td>
       </tr>
@@ -123,3 +123,7 @@
   </ng-template>
 
 </p-dialog>
+
+<p-toast position="top-right"></p-toast>
+
+<p-confirmDialog [style]="{width: '450px'}"></p-confirmDialog>

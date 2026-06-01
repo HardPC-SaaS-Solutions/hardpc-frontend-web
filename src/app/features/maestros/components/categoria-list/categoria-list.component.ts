@@ -13,6 +13,11 @@ import { InputTextModule } from 'primeng/inputtext';
 import { TextareaModule } from 'primeng/textarea';
 import { ToggleSwitchModule } from 'primeng/toggleswitch';
 
+// Nuevos Módulos para UX
+import { ToastModule } from 'primeng/toast';
+import { ConfirmDialogModule } from 'primeng/confirmdialog';
+import { MessageService, ConfirmationService } from 'primeng/api';
+
 @Component({
   selector: 'app-categoria-list',
   standalone: true,
@@ -25,13 +30,18 @@ import { ToggleSwitchModule } from 'primeng/toggleswitch';
     DialogModule,
     InputTextModule,
     TextareaModule,
-    ToggleSwitchModule
+    ToggleSwitchModule,
+    ToastModule,
+    ConfirmDialogModule
   ],
+  providers: [MessageService, ConfirmationService],
   templateUrl: './categoria-list.component.html'
 })
 export class CategoriaListComponent implements OnInit {
   private categoriaService = inject(CategoriaService);
   private fb = inject(FormBuilder);
+  private messageService = inject(MessageService);             // <-- Inyectado
+  private confirmationService = inject(ConfirmationService);
 
   // Variables de la tabla
   categorias: CategoriaDTO[] = [];
@@ -133,5 +143,25 @@ export class CategoriaListComponent implements OnInit {
         error: (err) => console.error('Error al crear', err)
       });
     }
+  }
+
+  eliminarCategoria(categoria: CategoriaDTO): void {
+    this.confirmationService.confirm({
+      message: `¿Estás seguro de que deseas eliminar la categoría <b>${categoria.nombre}</b>?`,
+      header: 'Confirmar Eliminación',
+      icon: 'pi pi-exclamation-triangle',
+      acceptLabel: 'Sí, eliminar',
+      rejectLabel: 'Cancelar',
+      acceptButtonStyleClass: 'p-button-danger',
+      accept: () => {
+        this.categoriaService.eliminar(categoria.id!).subscribe({
+          next: () => {
+            this.cargarCategorias({ first: 0, rows: this.rowsPerPage });
+            this.messageService.add({ severity: 'success', summary: 'Eliminado', detail: 'Categoría eliminada lógicamente' });
+          },
+          error: () => this.messageService.add({ severity: 'error', summary: 'Error', detail: 'No se pudo eliminar la categoría' })
+        });
+      }
+    });
   }
 }
