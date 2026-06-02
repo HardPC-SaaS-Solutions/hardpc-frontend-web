@@ -2,7 +2,10 @@ import { Routes } from '@angular/router';
 import { AppLayoutComponent } from './layout/app-layout/app-layout.component';
 import { LoginComponent } from './features/auth/components/login/login.component';
 import { authGuard } from './core/guards/auth-guard';
+
 import { CategoriaListComponent } from './features/maestros/components/categoria-list/categoria-list.component';
+import { TipoComprobanteListComponent } from './features/maestros/components/tipo-comprobante-list/tipo-comprobante-list';
+import { LocalListComponent } from './features/maestros/components/local-list/local-list';
 
 /**
  * @description Configuración principal de enrutamiento para el Sistema Administrativo de HardPC.
@@ -25,7 +28,17 @@ export const routes: Routes = [
       {
         path: 'categorias',
         component: CategoriaListComponent
+      },
+      {
+        path: 'tipos-comprobante',
+        component: TipoComprobanteListComponent
+      },
+      {
+        path: 'locales',
+        component: LocalListComponent
       }
+
+
     ]
   },
   {
@@ -33,4 +46,5 @@ export const routes: Routes = [
     path: '**',
     redirectTo: 'login'
   }
+
 ];
