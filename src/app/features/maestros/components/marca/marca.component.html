@@ -1,0 +1,116 @@
+<div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+
+    <div class="flex justify-between items-center mb-6">
+        <div>
+            <h2 class="text-2xl font-bold text-gray-800">Marcas</h2>
+            <p class="text-sm text-gray-500 font-medium">Gestión de fabricantes del catálogo de productos</p>
+        </div>
+
+        <div class="flex gap-3">
+            <span class="relative inline-block">
+                <i class="pi pi-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 z-10"></i>
+                <input pInputText type="text" (input)="dt.filterGlobal($any($event.target).value, 'contains')"
+                    placeholder="Buscar marca..." class="!pl-10 w-64" />
+            </span>
+            <p-button label="Nueva Marca" icon="pi pi-plus" styleClass="p-button-primary shadow-md shadow-blue-500/30"
+                (click)="abrirModalNuevo()"></p-button>
+        </div>
+    </div>
+
+    <p-table #dt [value]="marcas" [lazy]="true" (onLazyLoad)="cargarMarcas($event)" [rows]="rowsPerPage"
+        [totalRecords]="totalRecords" [paginator]="true" [loading]="loading" [rowsPerPageOptions]="[5, 10, 20]"
+        [showCurrentPageReport]="true"
+        currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} registros" styleClass="p-datatable-sm"
+        class="border-t border-gray-100">
+        <ng-template pTemplate="header">
+            <tr>
+                <th class="w-16 text-center">N°</th>
+                <th class="w-64">Nombre</th>
+                <th>Descripción</th>
+                <th class="w-24">Estado</th>
+                <th class="w-28 text-center">Acciones</th>
+            </tr>
+        </ng-template>
+
+        <ng-template pTemplate="body" let-m let-rowIndex="rowIndex">
+            <tr class="hover:bg-gray-50 transition-colors" [ngClass]="{'opacity-60': !m.activo}">
+
+                <td class="font-semibold text-gray-500 text-center">{{ rowIndex + 1 }}</td>
+
+                <td class="font-bold text-gray-900">{{ m.nombre }}</td>
+                <td class="text-gray-600 truncate max-w-[200px] text-sm">{{ m.descripcion || '—' }}</td>
+
+                <td>
+                    <p-tag [severity]="m.activo ? 'success' : 'danger'" [value]="m.activo ? 'Activo' : 'Inactivo'">
+                    </p-tag>
+                </td>
+
+                <td class="text-center">
+                    <div class="flex items-center justify-center gap-1">
+                        <ng-container *ngIf="m.activo">
+                            <p-button icon="pi pi-pencil"
+                                styleClass="p-button-rounded p-button-text p-button-info p-button-sm"
+                                (click)="abrirModalEditar(m)"></p-button>
+                            <p-button icon="pi pi-trash"
+                                styleClass="p-button-rounded p-button-text p-button-danger p-button-sm"
+                                (click)="eliminarMarca(m)"></p-button>
+                        </ng-container>
+
+                        <ng-container *ngIf="!m.activo">
+                            <p-button icon="pi pi-refresh"
+                                styleClass="p-button-rounded p-button-text p-button-success p-button-sm"
+                                (click)="restaurarMarca(m)" pTooltip="Restaurar"></p-button>
+                        </ng-container>
+                    </div>
+                </td>
+            </tr>
+        </ng-template>
+
+        <ng-template pTemplate="emptymessage">
+            <tr>
+                <td colspan="5" class="text-center py-8 text-gray-500 font-medium">
+                    <i class="pi pi-inbox text-2xl mb-2 text-gray-400 block"></i>
+                    No se encontraron marcas.
+                </td>
+            </tr>
+        </ng-template>
+    </p-table>
+
+</div>
+
+<p-dialog [header]="modoEdicion ? 'Editar Marca' : 'Nueva Marca'" [(visible)]="modalVisible" [modal]="true"
+    [style]="{ width: '450px' }" [draggable]="false" [resizable]="false" styleClass="p-fluid">
+
+    <form [formGroup]="marcaForm" (ngSubmit)="guardarMarca()" class="mt-4 flex flex-col gap-4">
+
+        <div class="flex flex-col gap-1">
+            <label for="nombre" class="font-medium text-gray-700 text-sm">Nombre de la Marca <span
+                    class="text-red-500">*</span></label>
+            <input pInputText id="nombre" formControlName="nombre" placeholder="Ej. Intel, Asus, Corsair..."
+                autocomplete="off" />
+            <small class="text-red-500" *ngIf="marcaForm.get('nombre')?.invalid && marcaForm.get('nombre')?.touched">
+                El nombre es obligatorio y no debe exceder 100 caracteres.
+            </small>
+        </div>
+
+        <div class="flex flex-col gap-1">
+            <label for="descripcion" class="font-medium text-gray-700 text-sm">Descripción</label>
+            <textarea pTextarea id="descripcion" formControlName="descripcion" rows="3"
+                placeholder="Detalle informativo sobre la marca..."></textarea>
+        </div>
+
+    </form>
+
+    <ng-template pTemplate="footer">
+        <div class="flex justify-end gap-2 mt-4">
+            <p-button label="Cancelar" icon="pi pi-times" styleClass="p-button-text p-button-secondary"
+                (click)="cerrarModal()"></p-button>
+            <p-button [label]="modoEdicion ? 'Actualizar' : 'Guardar'" icon="pi pi-check" styleClass="p-button-primary"
+                (click)="guardarMarca()"></p-button>
+        </div>
+    </ng-template>
+
+</p-dialog>
+
+<p-toast position="top-right"></p-toast>
+<p-confirmDialog [style]="{width: '450px'}"></p-confirmDialog>
