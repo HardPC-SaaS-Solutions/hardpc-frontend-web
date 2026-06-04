@@ -1,11 +1,11 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { CategoriaService } from '../../services/categoria.service';
 import { CategoriaDTO } from '../../../../core/models/categoria.dto';
 
 // Módulos de PrimeNG
-import { TableModule } from 'primeng/table';
+import { TableModule, Table } from 'primeng/table';
 import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
 import { DialogModule } from 'primeng/dialog';
@@ -21,7 +21,7 @@ import { MessageService, ConfirmationService } from 'primeng/api';
 /**
  * @description Componente central para la gestión de categorías en el inventario de HardPC.
  * Administra el listado paginado, creación, edición y control de estado (activación/desactivación)
- * de las categorías de productos (ej. repuestos, suministros).
+ * de las categorías de productos delegando el estado visual a ViewChild.
  */
 @Component({
   selector: 'app-categoria-list',
@@ -43,6 +43,10 @@ import { MessageService, ConfirmationService } from 'primeng/api';
   templateUrl: './categoria-list.component.html'
 })
 export class CategoriaListComponent implements OnInit {
+
+  /** Referencia nativa a la instancia de la tabla PrimeNG para gestionar su paginación y filtros de forma directa. */
+  @ViewChild('dt') dt!: Table;
+
   // Inyección de dependencias
   private categoriaService = inject(CategoriaService);
   private fb = inject(FormBuilder);
@@ -58,8 +62,6 @@ export class CategoriaListComponent implements OnInit {
   loading: boolean = true;
   /** Cantidad de registros mostrados por página. */
   rowsPerPage: number = 10;
-  /** Almacena el índice del primer elemento de la página actual para evitar perder el foco al recargar. */
-  firstItemIndex: number = 0;
 
   // --- ESTADO DEL FORMULARIO Y MODAL ---
   /** Instancia del formulario reactivo para la gestión de datos. */
@@ -92,21 +94,18 @@ export class CategoriaListComponent implements OnInit {
 
   /**
    * @description Carga el listado paginado de categorías desde la API.
-   * Diseñado para integrarse con el evento 'onLazyLoad' de PrimeNG, procesando
-   * automáticamente la paginación y la búsqueda global.
+   * Delega el cálculo de paginación a los metadatos dinámicos proporcionados por PrimeNG.
    * @param event Objeto de evento emitido por la tabla PrimeNG.
    */
   cargarCategorias(event: any): void {
     this.loading = true;
 
-    // Capturamos el índice actual para mantener la posición al refrescar la tabla
-    this.firstItemIndex = event.first !== undefined ? event.first : 0;
-
-    const page = this.firstItemIndex / (event.rows || this.rowsPerPage);
-    const size = event.rows || this.rowsPerPage;
+    const first = event.first ?? 0;
+    const rows = event.rows ?? this.rowsPerPage;
+    const page = first / rows;
     const buscar = event.globalFilter || '';
 
-    this.categoriaService.listarPaginado(page, size, buscar).subscribe({
+    this.categoriaService.listarPaginado(page, rows, buscar).subscribe({
       next: (response) => {
         this.categorias = response.content;
         this.totalRecords = response.totalElements;
@@ -158,7 +157,7 @@ export class CategoriaListComponent implements OnInit {
   /**
    * @description Procesa la persistencia de datos. Valida el formulario y decide
    * si ejecutar una creación (POST) o una actualización (PUT) según el contexto actual.
-   * Mantiene la integridad del estado lógico preexistente durante las ediciones.
+   * Mantiene la tabla congelada en su vista actual (edición) o la reinicia (creación).
    */
   guardarCategoria(): void {
     if (this.categoriaForm.invalid) {
@@ -176,8 +175,8 @@ export class CategoriaListComponent implements OnInit {
       this.categoriaService.actualizar(this.idCategoriaActual, categoriaData).subscribe({
         next: () => {
           this.cerrarModal();
-          // Mantiene a la tabla en la misma página tras la edición
-          this.cargarCategorias({ first: this.firstItemIndex, rows: this.rowsPerPage });
+          // Congela y recarga la tabla preservando la página y filtros actuales
+          this.cargarCategorias(this.dt.createLazyLoadMetadata());
           this.messageService.add({ severity: 'success', summary: 'Actualizado', detail: 'Categoría actualizada correctamente' });
         },
         error: () => this.messageService.add({ severity: 'error', summary: 'Error', detail: 'No se pudo actualizar la categoría' })
@@ -188,8 +187,8 @@ export class CategoriaListComponent implements OnInit {
       this.categoriaService.crear(categoriaData).subscribe({
         next: () => {
           this.cerrarModal();
-          // Retorna a la primera página para visualizar la creación reciente
-          this.cargarCategorias({ first: 0, rows: this.rowsPerPage });
+          // Reinicia el estado de la tabla, volviendo a la página 1
+          this.dt.reset();
           this.messageService.add({ severity: 'success', summary: 'Creado', detail: 'Categoría registrada correctamente' });
         },
         error: () => this.messageService.add({ severity: 'error', summary: 'Error', detail: 'No se pudo crear la categoría' })
@@ -212,9 +211,14 @@ export class CategoriaListComponent implements OnInit {
       accept: () => {
         this.categoriaService.eliminar(categoria.id!).subscribe({
           next: () => {
-            // Mantiene la posición en la página actual
-            this.cargarCategorias({ first: this.firstItemIndex, rows: this.rowsPerPage });
-            this.messageService.add({ severity: 'success', summary: 'Eliminado', detail: 'Categoría desactivada' });
+            // Mantiene el bloque de paginación activo
+            this.cargarCategorias(this.dt.createLazyLoadMetadata());
+            this.messageService.add({
+              severity: 'info',
+              summary: 'Eliminado',
+              detail: 'Categoría desactivada',
+              icon: 'pi pi-trash'
+            });
           },
           error: () => this.messageService.add({ severity: 'error', summary: 'Error', detail: 'No se pudo desactivar la categoría' })
         });
@@ -239,8 +243,8 @@ export class CategoriaListComponent implements OnInit {
         const categoriaRestaurada: CategoriaDTO = { ...categoria, estado: true };
         this.categoriaService.actualizar(categoria.id!, categoriaRestaurada).subscribe({
           next: () => {
-            // Mantiene la posición en la página actual
-            this.cargarCategorias({ first: this.firstItemIndex, rows: this.rowsPerPage });
+            // Mantiene el bloque de paginación activo
+            this.cargarCategorias(this.dt.createLazyLoadMetadata());
             this.messageService.add({ severity: 'success', summary: 'Restaurado', detail: 'Categoría reactivada' });
           },
           error: () => this.messageService.add({ severity: 'error', summary: 'Error', detail: 'No se pudo reactivar la categoría' })
