@@ -58,6 +58,8 @@ export class CategoriaListComponent implements OnInit {
   loading: boolean = true;
   /** Cantidad de registros mostrados por página. */
   rowsPerPage: number = 10;
+  /** Almacena el índice del primer elemento de la página actual para evitar perder el foco al recargar. */
+  firstItemIndex: number = 0;
 
   // --- ESTADO DEL FORMULARIO Y MODAL ---
   /** Instancia del formulario reactivo para la gestión de datos. */
@@ -96,7 +98,11 @@ export class CategoriaListComponent implements OnInit {
    */
   cargarCategorias(event: any): void {
     this.loading = true;
-    const page = event.first ? event.first / event.rows : 0;
+
+    // Capturamos el índice actual para mantener la posición al refrescar la tabla
+    this.firstItemIndex = event.first !== undefined ? event.first : 0;
+
+    const page = this.firstItemIndex / (event.rows || this.rowsPerPage);
     const size = event.rows || this.rowsPerPage;
     const buscar = event.globalFilter || '';
 
@@ -170,7 +176,8 @@ export class CategoriaListComponent implements OnInit {
       this.categoriaService.actualizar(this.idCategoriaActual, categoriaData).subscribe({
         next: () => {
           this.cerrarModal();
-          this.cargarCategorias({ first: 0, rows: this.rowsPerPage });
+          // Mantiene a la tabla en la misma página tras la edición
+          this.cargarCategorias({ first: this.firstItemIndex, rows: this.rowsPerPage });
           this.messageService.add({ severity: 'success', summary: 'Actualizado', detail: 'Categoría actualizada correctamente' });
         },
         error: () => this.messageService.add({ severity: 'error', summary: 'Error', detail: 'No se pudo actualizar la categoría' })
@@ -181,6 +188,7 @@ export class CategoriaListComponent implements OnInit {
       this.categoriaService.crear(categoriaData).subscribe({
         next: () => {
           this.cerrarModal();
+          // Retorna a la primera página para visualizar la creación reciente
           this.cargarCategorias({ first: 0, rows: this.rowsPerPage });
           this.messageService.add({ severity: 'success', summary: 'Creado', detail: 'Categoría registrada correctamente' });
         },
@@ -204,7 +212,8 @@ export class CategoriaListComponent implements OnInit {
       accept: () => {
         this.categoriaService.eliminar(categoria.id!).subscribe({
           next: () => {
-            this.cargarCategorias({ first: 0, rows: this.rowsPerPage });
+            // Mantiene la posición en la página actual
+            this.cargarCategorias({ first: this.firstItemIndex, rows: this.rowsPerPage });
             this.messageService.add({ severity: 'success', summary: 'Eliminado', detail: 'Categoría desactivada' });
           },
           error: () => this.messageService.add({ severity: 'error', summary: 'Error', detail: 'No se pudo desactivar la categoría' })
@@ -230,7 +239,8 @@ export class CategoriaListComponent implements OnInit {
         const categoriaRestaurada: CategoriaDTO = { ...categoria, estado: true };
         this.categoriaService.actualizar(categoria.id!, categoriaRestaurada).subscribe({
           next: () => {
-            this.cargarCategorias({ first: 0, rows: this.rowsPerPage });
+            // Mantiene la posición en la página actual
+            this.cargarCategorias({ first: this.firstItemIndex, rows: this.rowsPerPage });
             this.messageService.add({ severity: 'success', summary: 'Restaurado', detail: 'Categoría reactivada' });
           },
           error: () => this.messageService.add({ severity: 'error', summary: 'Error', detail: 'No se pudo reactivar la categoría' })

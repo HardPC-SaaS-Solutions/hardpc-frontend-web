@@ -54,6 +54,8 @@ export class LocalListComponent implements OnInit {
   loading = true;
   /** Cantidad de registros mostrados por página. */
   rowsPerPage = 10;
+  /** Almacena el índice del primer elemento de la página actual para evitar perder el foco al recargar. */
+  firstItemIndex: number = 0;
 
   // --- ESTADO DEL FORMULARIO Y MODAL ---
   /** Instancia del formulario reactivo para la gestión de datos. */
@@ -91,7 +93,11 @@ export class LocalListComponent implements OnInit {
    */
   cargarLocales(event: any): void {
     this.loading = true;
-    const page = event.first ? event.first / event.rows : 0;
+
+    // Capturamos el índice actual para mantener la posición al refrescar la tabla
+    this.firstItemIndex = event.first !== undefined ? event.first : 0;
+
+    const page = this.firstItemIndex / (event.rows || this.rowsPerPage);
     const size = event.rows || this.rowsPerPage;
     const buscar = event.globalFilter || '';
 
@@ -146,6 +152,7 @@ export class LocalListComponent implements OnInit {
 
   /**
    * @description Procesa la persistencia de datos decidiendo entre POST o PUT.
+   * Mantiene la página actual de la tabla en actualizaciones, y retorna a la primera en creaciones.
    */
   guardar(): void {
     if (this.localForm.invalid) {
@@ -162,7 +169,8 @@ export class LocalListComponent implements OnInit {
       this.localService.actualizar(this.idActual, data).subscribe({
         next: () => {
           this.cerrarModal();
-          this.cargarLocales({ first: 0, rows: this.rowsPerPage });
+          // Mantiene a la tabla visualmente en la misma página tras la edición
+          this.cargarLocales({ first: this.firstItemIndex, rows: this.rowsPerPage });
           this.messageService.add({ severity: 'success', summary: 'Actualizado', detail: 'Local actualizado correctamente' });
         },
         error: (err) => {
@@ -176,6 +184,7 @@ export class LocalListComponent implements OnInit {
       this.localService.crear(data).subscribe({
         next: () => {
           this.cerrarModal();
+          // Retorna a la primera página para visualizar la creación reciente
           this.cargarLocales({ first: 0, rows: this.rowsPerPage });
           this.messageService.add({ severity: 'success', summary: 'Creado', detail: 'Local registrado correctamente' });
         },
@@ -202,7 +211,8 @@ export class LocalListComponent implements OnInit {
       accept: () => {
         this.localService.eliminar(local.id!).subscribe({
           next: () => {
-            this.cargarLocales({ first: 0, rows: this.rowsPerPage });
+            // Mantiene la posición en la página actual
+            this.cargarLocales({ first: this.firstItemIndex, rows: this.rowsPerPage });
             this.messageService.add({ severity: 'success', summary: 'Eliminado', detail: 'Local desactivado correctamente' });
           },
           error: (err) => {
@@ -230,7 +240,8 @@ export class LocalListComponent implements OnInit {
         const data: LocalDTO = { ...local, estado: true };
         this.localService.actualizar(local.id!, data).subscribe({
           next: () => {
-            this.cargarLocales({ first: 0, rows: this.rowsPerPage });
+            // Mantiene la posición en la página actual
+            this.cargarLocales({ first: this.firstItemIndex, rows: this.rowsPerPage });
             this.messageService.add({ severity: 'success', summary: 'Restaurado', detail: 'Local reactivado correctamente' });
           },
           error: (err) => {

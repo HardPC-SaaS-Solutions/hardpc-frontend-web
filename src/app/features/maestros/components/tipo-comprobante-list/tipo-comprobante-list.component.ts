@@ -54,6 +54,8 @@ export class TipoComprobanteListComponent implements OnInit {
   loading = true;
   /** Cantidad de registros mostrados por página. */
   rowsPerPage = 10;
+  /** Almacena el índice del primer elemento de la página actual para evitar perder el foco al recargar. */
+  firstItemIndex: number = 0;
 
   // --- ESTADO DEL FORMULARIO Y MODAL ---
   /** Instancia del formulario reactivo para la gestión de datos. */
@@ -88,7 +90,11 @@ export class TipoComprobanteListComponent implements OnInit {
    */
   cargarTiposComprobante(event: any): void {
     this.loading = true;
-    const page = event.first ? event.first / event.rows : 0;
+
+    // Capturamos el índice actual para mantener la posición al refrescar la tabla
+    this.firstItemIndex = event.first !== undefined ? event.first : 0;
+
+    const page = this.firstItemIndex / (event.rows || this.rowsPerPage);
     const size = event.rows || this.rowsPerPage;
     const buscar = event.globalFilter || '';
 
@@ -157,7 +163,8 @@ export class TipoComprobanteListComponent implements OnInit {
       this.tipoComprobanteService.actualizar(this.idActual, data).subscribe({
         next: () => {
           this.cerrarModal();
-          this.cargarTiposComprobante({ first: 0, rows: this.rowsPerPage });
+          // Mantiene a la tabla visualmente en la misma página tras la edición
+          this.cargarTiposComprobante({ first: this.firstItemIndex, rows: this.rowsPerPage });
           this.messageService.add({ severity: 'success', summary: 'Actualizado', detail: 'Tipo de comprobante actualizado' });
         },
         error: (err) => {
@@ -171,6 +178,7 @@ export class TipoComprobanteListComponent implements OnInit {
       this.tipoComprobanteService.crear(data).subscribe({
         next: () => {
           this.cerrarModal();
+          // Retorna a la primera página para visualizar la creación reciente
           this.cargarTiposComprobante({ first: 0, rows: this.rowsPerPage });
           this.messageService.add({ severity: 'success', summary: 'Creado', detail: 'Tipo de comprobante registrado' });
         },
@@ -197,7 +205,8 @@ export class TipoComprobanteListComponent implements OnInit {
       accept: () => {
         this.tipoComprobanteService.eliminar(item.id!).subscribe({
           next: () => {
-            this.cargarTiposComprobante({ first: 0, rows: this.rowsPerPage });
+            // Mantiene la posición en la página actual
+            this.cargarTiposComprobante({ first: this.firstItemIndex, rows: this.rowsPerPage });
             this.messageService.add({ severity: 'success', summary: 'Eliminado', detail: 'Registro desactivado' });
           },
           error: (err) => {
@@ -225,7 +234,8 @@ export class TipoComprobanteListComponent implements OnInit {
         const data: TipoComprobanteDTO = { ...item, estado: true };
         this.tipoComprobanteService.actualizar(item.id!, data).subscribe({
           next: () => {
-            this.cargarTiposComprobante({ first: 0, rows: this.rowsPerPage });
+            // Mantiene la posición en la página actual
+            this.cargarTiposComprobante({ first: this.firstItemIndex, rows: this.rowsPerPage });
             this.messageService.add({ severity: 'success', summary: 'Restaurado', detail: 'Registro reactivado' });
           },
           error: (err) => {
