@@ -1,0 +1,171 @@
+<div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+
+  <div class="flex justify-between items-center mb-6">
+    <div>
+      <h2 class="text-2xl font-bold text-gray-800">Locales</h2>
+      <p class="text-sm text-gray-500 font-medium">Gestión de sucursales y puntos de atención</p>
+    </div>
+
+    <div class="flex gap-3">
+      <span class="relative inline-block">
+        <i class="pi pi-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 z-10"></i>
+        <input
+          pInputText
+          type="text"
+          (input)="dt.filterGlobal($any($event.target).value, 'contains')"
+          placeholder="Buscar local..."
+          class="!pl-10 w-64" />
+      </span>
+
+      <p-button label="Nuevo Local" icon="pi pi-plus" styleClass="p-button-primary shadow-md shadow-blue-500/30" (click)="abrirModalNuevo()"></p-button>
+    </div>
+  </div>
+
+  <p-table
+    #dt
+    [value]="locales"
+    [lazy]="true"
+    (onLazyLoad)="cargarLocales($event)"
+    [rows]="rowsPerPage"
+    [totalRecords]="totalRecords"
+    [paginator]="true"
+    [loading]="loading"
+    [rowsPerPageOptions]="[5, 10, 20]"
+    [showCurrentPageReport]="true"
+    currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} registros"
+    styleClass="p-datatable-sm"
+    class="border-t border-gray-100"
+  >
+    <ng-template pTemplate="header">
+      <tr>
+        <th class="w-16 text-center">N°</th>
+        <th class="w-16 text-center">Foto</th>
+        <th>Nombre</th>
+        <th>Dirección</th>
+        <th class="w-32">Teléfono</th>
+        <th class="w-24">Estado</th>
+        <th class="w-28 text-center">Acciones</th>
+      </tr>
+    </ng-template>
+
+    <ng-template pTemplate="body" let-local let-rowIndex="rowIndex">
+      <tr class="hover:bg-gray-50 transition-colors" [ngClass]="{'opacity-60': !local.estado}">
+
+        <td class="font-semibold text-gray-500 text-center">{{ rowIndex + 1 }}</td>
+
+        <td>
+          <div class="w-8 h-8 rounded bg-gray-100 flex items-center justify-center text-gray-400 overflow-hidden border border-gray-200" [ngClass]="{'grayscale opacity-50': !local.estado}">
+            <i *ngIf="!local.fotoPortadaUrl" class="pi pi-image text-sm"></i>
+            <img *ngIf="local.fotoPortadaUrl"
+                 [src]="local.fotoPortadaUrl"
+                 class="w-full h-full object-cover p-0.5"
+                 alt="Foto"
+                 (error)="local.fotoPortadaUrl = ''">
+          </div>
+        </td>
+
+        <td class="font-bold text-gray-900">{{ local.nombre }}</td>
+        <td class="text-gray-600 truncate max-w-[200px] text-sm">{{ local.direccion }}</td>
+        <td class="text-gray-600 text-sm">{{ local.telefono }}</td>
+
+        <td>
+          <p-tag
+            [severity]="local.estado ? 'success' : 'danger'"
+            [value]="local.estado ? 'Activo' : 'Inactivo'">
+          </p-tag>
+        </td>
+
+        <td class="text-center">
+          <div class="flex items-center justify-center gap-1">
+            <ng-container *ngIf="local.estado">
+              <p-button icon="pi pi-pencil" styleClass="p-button-rounded p-button-text p-button-info p-button-sm" (click)="abrirModalEditar(local)"></p-button>
+              <p-button icon="pi pi-trash" styleClass="p-button-rounded p-button-text p-button-danger p-button-sm" (click)="eliminar(local)"></p-button>
+            </ng-container>
+
+            <ng-container *ngIf="!local.estado">
+              <p-button icon="pi pi-refresh" styleClass="p-button-rounded p-button-text p-button-success p-button-sm" (click)="restaurar(local)" pTooltip="Restaurar"></p-button>
+            </ng-container>
+          </div>
+        </td>
+
+      </tr>
+    </ng-template>
+
+    <ng-template pTemplate="emptymessage">
+      <tr>
+        <td colspan="7" class="text-center py-8 text-gray-500 font-medium">
+          <i class="pi pi-inbox text-2xl mb-2 text-gray-400 block"></i>
+          No se encontraron locales registrados en el sistema.
+        </td>
+      </tr>
+    </ng-template>
+  </p-table>
+
+</div>
+
+<p-dialog
+  [header]="modoEdicion ? 'Editar Local' : 'Nuevo Local'"
+  [(visible)]="modalVisible"
+  [modal]="true"
+  [style]="{ width: '450px' }"
+  [draggable]="false"
+  [resizable]="false"
+  styleClass="p-fluid">
+
+  <form [formGroup]="localForm" (ngSubmit)="guardar()" class="mt-4 flex flex-col gap-4">
+
+    <div class="flex flex-col gap-1">
+      <label for="nombre" class="font-medium text-gray-700 text-sm">Nombre <span class="text-red-500">*</span></label>
+      <input pInputText id="nombre" formControlName="nombre" autocomplete="off" />
+      <small class="text-red-500" *ngIf="localForm.get('nombre')?.invalid && localForm.get('nombre')?.touched">
+        El nombre es obligatorio y no debe exceder 100 caracteres.
+      </small>
+    </div>
+
+    <div class="flex flex-col gap-1">
+      <label for="direccion" class="font-medium text-gray-700 text-sm">Dirección <span class="text-red-500">*</span></label>
+      <input pInputText id="direccion" formControlName="direccion" autocomplete="off" />
+      <small class="text-red-500" *ngIf="localForm.get('direccion')?.invalid && localForm.get('direccion')?.touched">
+        La dirección es obligatoria y no debe exceder 255 caracteres.
+      </small>
+    </div>
+
+    <div class="flex flex-col gap-1">
+      <label for="telefono" class="font-medium text-gray-700 text-sm">Teléfono <span class="text-red-500">*</span></label>
+      <input pInputText id="telefono" formControlName="telefono" autocomplete="off" />
+      <small class="text-red-500" *ngIf="localForm.get('telefono')?.invalid && localForm.get('telefono')?.touched">
+        El teléfono es obligatorio y no debe exceder 20 caracteres.
+      </small>
+    </div>
+
+    <div class="flex flex-col gap-1">
+      <label for="fotoPortadaUrl" class="font-medium text-gray-700 text-sm">URL de Foto</label>
+      <div class="flex gap-2 items-center">
+        <div class="flex-1">
+          <input pInputText id="fotoPortadaUrl" formControlName="fotoPortadaUrl" autocomplete="off" class="w-full" />
+        </div>
+        <div class="w-10 h-10 rounded border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 overflow-hidden shadow-inner">
+          <i *ngIf="!localForm.get('fotoPortadaUrl')?.value" class="pi pi-image text-gray-300 text-lg"></i>
+          <img *ngIf="localForm.get('fotoPortadaUrl')?.value"
+               [src]="localForm.get('fotoPortadaUrl')?.value"
+               class="w-full h-full object-cover p-1"
+               alt="Preview"
+               (error)="$any($event.target).style.display = 'none'"
+               (load)="$any($event.target).style.display = 'block'">
+        </div>
+      </div>
+    </div>
+
+  </form>
+
+  <ng-template pTemplate="footer">
+    <div class="flex justify-end gap-2 mt-4">
+      <p-button label="Cancelar" icon="pi pi-times" styleClass="p-button-text p-button-secondary" (click)="cerrarModal()"></p-button>
+      <p-button [label]="modoEdicion ? 'Actualizar' : 'Guardar'" icon="pi pi-check" styleClass="p-button-primary" (click)="guardar()"></p-button>
+    </div>
+  </ng-template>
+
+</p-dialog>
+
+<p-toast position="top-right"></p-toast>
+<p-confirmDialog [style]="{width: '450px'}"></p-confirmDialog>

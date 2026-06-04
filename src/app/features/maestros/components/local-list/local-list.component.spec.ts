@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { LocalListComponent } from './local-list';
+import { LocalListComponent } from './local-list.component';
 
 describe('LocalListComponent', () => {
   let component: LocalListComponent;
