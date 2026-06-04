@@ -17,7 +17,7 @@
         </div>
     </div>
 
-    <p-table #dt [value]="marcas" [lazy]="true" (onLazyLoad)="cargarMarcas($event)" [rows]="rowsPerPage"
+    <p-table #dt [value]="marcas" [lazy]="true" (onLazyLoad)="cargarMarcas($event)" [(first)]="firstItemIndex" [rows]="rowsPerPage"
         [totalRecords]="totalRecords" [paginator]="true" [loading]="loading" [rowsPerPageOptions]="[5, 10, 20]"
         [showCurrentPageReport]="true"
         currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} registros" styleClass="p-datatable-sm"
@@ -25,29 +25,39 @@
         <ng-template pTemplate="header">
             <tr>
                 <th class="w-16 text-center">N°</th>
-                <th class="w-64">Nombre</th>
-                <th>Descripción</th>
+                <th class="w-24 text-center">Logo</th>
+                <th>Nombre</th>
                 <th class="w-24">Estado</th>
                 <th class="w-28 text-center">Acciones</th>
             </tr>
         </ng-template>
 
         <ng-template pTemplate="body" let-m let-rowIndex="rowIndex">
-            <tr class="hover:bg-gray-50 transition-colors" [ngClass]="{'opacity-60': !m.activo}">
+            <tr class="hover:bg-gray-50 transition-colors" [ngClass]="{'opacity-60': !m.estado}">
 
                 <td class="font-semibold text-gray-500 text-center">{{ rowIndex + 1 }}</td>
 
+                <td class="text-center">
+                    <div class="w-10 h-10 rounded bg-white flex items-center justify-center text-gray-400 overflow-hidden border border-gray-200 mx-auto" [ngClass]="{'grayscale opacity-50': !m.estado}">
+                        <i *ngIf="!m.logoUrl" class="pi pi-image text-sm"></i>
+                        <img *ngIf="m.logoUrl"
+                             [src]="m.logoUrl"
+                             class="w-full h-full object-contain p-1"
+                             alt="Logo"
+                             (error)="m.logoUrl = ''">
+                    </div>
+                </td>
+
                 <td class="font-bold text-gray-900">{{ m.nombre }}</td>
-                <td class="text-gray-600 truncate max-w-[200px] text-sm">{{ m.descripcion || '—' }}</td>
 
                 <td>
-                    <p-tag [severity]="m.activo ? 'success' : 'danger'" [value]="m.activo ? 'Activo' : 'Inactivo'">
+                    <p-tag [severity]="m.estado ? 'success' : 'danger'" [value]="m.estado ? 'Activo' : 'Inactivo'">
                     </p-tag>
                 </td>
 
                 <td class="text-center">
                     <div class="flex items-center justify-center gap-1">
-                        <ng-container *ngIf="m.activo">
+                        <ng-container *ngIf="m.estado">
                             <p-button icon="pi pi-pencil"
                                 styleClass="p-button-rounded p-button-text p-button-info p-button-sm"
                                 (click)="abrirModalEditar(m)"></p-button>
@@ -56,7 +66,7 @@
                                 (click)="eliminarMarca(m)"></p-button>
                         </ng-container>
 
-                        <ng-container *ngIf="!m.activo">
+                        <ng-container *ngIf="!m.estado">
                             <p-button icon="pi pi-refresh"
                                 styleClass="p-button-rounded p-button-text p-button-success p-button-sm"
                                 (click)="restaurarMarca(m)" pTooltip="Restaurar"></p-button>
@@ -70,7 +80,7 @@
             <tr>
                 <td colspan="5" class="text-center py-8 text-gray-500 font-medium">
                     <i class="pi pi-inbox text-2xl mb-2 text-gray-400 block"></i>
-                    No se encontraron marcas.
+                    No se encontraron marcas registradas.
                 </td>
             </tr>
         </ng-template>
@@ -84,19 +94,32 @@
     <form [formGroup]="marcaForm" (ngSubmit)="guardarMarca()" class="mt-4 flex flex-col gap-4">
 
         <div class="flex flex-col gap-1">
-            <label for="nombre" class="font-medium text-gray-700 text-sm">Nombre de la Marca <span
-                    class="text-red-500">*</span></label>
-            <input pInputText id="nombre" formControlName="nombre" placeholder="Ej. Intel, Asus, Corsair..."
-                autocomplete="off" />
+            <label for="nombre" class="font-medium text-gray-700 text-sm">Nombre de la Marca <span class="text-red-500">*</span></label>
+            <input pInputText id="nombre" formControlName="nombre" placeholder="Ej. Intel, Asus, Corsair..." autocomplete="off" />
             <small class="text-red-500" *ngIf="marcaForm.get('nombre')?.invalid && marcaForm.get('nombre')?.touched">
                 El nombre es obligatorio y no debe exceder 100 caracteres.
             </small>
         </div>
 
         <div class="flex flex-col gap-1">
-            <label for="descripcion" class="font-medium text-gray-700 text-sm">Descripción</label>
-            <textarea pTextarea id="descripcion" formControlName="descripcion" rows="3"
-                placeholder="Detalle informativo sobre la marca..."></textarea>
+            <label for="logoUrl" class="font-medium text-gray-700 text-sm">URL del Logo</label>
+            <div class="flex gap-2 items-center">
+                <div class="flex-1">
+                    <input pInputText id="logoUrl" formControlName="logoUrl" autocomplete="off" class="w-full" placeholder="https://ejemplo.com/logo.png" />
+                </div>
+                <div class="w-10 h-10 rounded border border-gray-200 bg-white flex items-center justify-center flex-shrink-0 overflow-hidden shadow-inner">
+                    <i *ngIf="!marcaForm.get('logoUrl')?.value" class="pi pi-image text-gray-300 text-lg"></i>
+                    <img *ngIf="marcaForm.get('logoUrl')?.value"
+                         [src]="marcaForm.get('logoUrl')?.value"
+                         class="w-full h-full object-contain p-1"
+                         alt="Preview"
+                         (error)="$any($event.target).style.display = 'none'"
+                         (load)="$any($event.target).style.display = 'block'">
+                </div>
+            </div>
+            <small class="text-red-500" *ngIf="marcaForm.get('logoUrl')?.invalid && marcaForm.get('logoUrl')?.touched">
+                La URL del logo no debe exceder los 500 caracteres.
+            </small>
         </div>
 
     </form>

@@ -1,6 +1,6 @@
 export interface MarcaDTO {
-  id?: number; // Opcional porque al crear una nueva, el ID lo genera la base de datos
+  id?: number;
   nombre: string;
-  descripcion?: string;
-  activo?: boolean; // Para el manejo de la eliminación lógica
+  logoUrl?: string;
+  estado?: boolean;
 }

@@ -3,7 +3,7 @@ import { AppLayoutComponent } from './layout/app-layout/app-layout.component';
 import { LoginComponent } from './features/auth/components/login/login.component';
 import { authGuard } from './core/guards/auth-guard';
 import { CategoriaListComponent } from './features/maestros/components/categoria-list/categoria-list.component';
-import { MarcaComponent } from './features/maestros/components/marca/marca.component';
+import { MarcaListComponent } from './features/maestros/components/marca/marca-list.component';
 import { FormaPagoComponent } from './features/maestros/components/forma-pago/forma-pago.component';
 
 /**
@@ -30,7 +30,7 @@ export const routes: Routes = [
       },
       {
         path: 'marcas',
-        component: MarcaComponent
+        component: MarcaListComponent
       },
       {
         path: 'formas-pago',
