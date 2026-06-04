@@ -17,7 +17,7 @@
         </div>
     </div>
 
-    <p-table #dt [value]="marcas" [lazy]="true" (onLazyLoad)="cargarMarcas($event)" [(first)]="firstItemIndex" [rows]="rowsPerPage"
+    <p-table #dt [value]="marcas" [lazy]="true" (onLazyLoad)="cargarMarcas($event)" [rows]="rowsPerPage"
         [totalRecords]="totalRecords" [paginator]="true" [loading]="loading" [rowsPerPageOptions]="[5, 10, 20]"
         [showCurrentPageReport]="true"
         currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} registros" styleClass="p-datatable-sm"

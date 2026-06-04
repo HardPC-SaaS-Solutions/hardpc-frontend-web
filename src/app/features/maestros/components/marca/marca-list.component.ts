@@ -1,11 +1,11 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { MarcaService } from '../../services/marca.service';
 import { MarcaDTO } from '../../../../core/models/marca.dto';
 
 // Módulos de PrimeNG
-import { TableModule } from 'primeng/table';
+import { TableModule, Table } from 'primeng/table';
 import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
 import { DialogModule } from 'primeng/dialog';
@@ -18,8 +18,8 @@ import { MessageService, ConfirmationService } from 'primeng/api';
 
 /**
  * @description Componente central para la gestión de marcas en el inventario de HardPC.
- * Administra el catálogo de fabricantes (ej. Asus, Kingston, Intel) asegurando
- * la estandarización y correcta clasificación de los productos y repuestos.
+ * Administra el catálogo de fabricantes (ej. Asus, Kingston, Intel) con control
+ * avanzado del estado de la tabla (paginación/filtros) mediante ViewChild.
  */
 @Component({
   selector: 'app-marca-list',
@@ -39,6 +39,9 @@ import { MessageService, ConfirmationService } from 'primeng/api';
   templateUrl: './marca-list.component.html'
 })
 export class MarcaListComponent implements OnInit {
+  /** Referencia nativa a la instancia de la tabla PrimeNG para gestionar su ciclo de vida. */
+  @ViewChild('dt') dt!: Table;
+
   // Inyección de dependencias
   private marcaService = inject(MarcaService);
   private fb = inject(FormBuilder);
@@ -54,8 +57,6 @@ export class MarcaListComponent implements OnInit {
   loading: boolean = true;
   /** Cantidad de registros mostrados por página. */
   rowsPerPage: number = 10;
-  /** Almacena el índice del primer elemento de la página actual para evitar perder el foco al recargar. */
-  firstItemIndex: number = 0;
 
   // --- ESTADO DEL FORMULARIO Y MODAL ---
   /** Instancia del formulario reactivo para la gestión de datos. */
@@ -76,7 +77,6 @@ export class MarcaListComponent implements OnInit {
 
   /**
    * @description Construye el formulario reactivo aplicando las validaciones requeridas.
-   * El estado del registro se maneja de forma programática.
    */
   private inicializarFormulario(): void {
     this.marcaForm = this.fb.group({
@@ -87,20 +87,18 @@ export class MarcaListComponent implements OnInit {
 
   /**
    * @description Carga el listado paginado de marcas desde la API.
-   * Procesa eventos de la tabla (LazyLoad) y captura la posición de la paginación actual.
+   * Delegando el cálculo de paginación a los metadatos dinámicos de PrimeNG.
    * @param event Objeto de evento emitido por la tabla PrimeNG.
    */
   cargarMarcas(event: any): void {
     this.loading = true;
 
-    // Capturamos en qué índice está la tabla actualmente para mantener la posición al actualizar
-    this.firstItemIndex = event.first !== undefined ? event.first : 0;
-
-    const page = this.firstItemIndex / (event.rows || this.rowsPerPage);
-    const size = event.rows || this.rowsPerPage;
+    const first = event.first ?? 0;
+    const rows = event.rows ?? this.rowsPerPage;
+    const page = first / rows;
     const buscar = event.globalFilter || '';
 
-    this.marcaService.listarPaginado(page, size, buscar).subscribe({
+    this.marcaService.listarPaginado(page, rows, buscar).subscribe({
       next: (response) => {
         this.marcas = response.content;
         this.totalRecords = response.totalElements;
@@ -125,8 +123,7 @@ export class MarcaListComponent implements OnInit {
   }
 
   /**
-   * @description Configura y despliega el modal en contexto de edición, cargando los
-   * datos del fabricante seleccionado en el formulario.
+   * @description Configura y despliega el modal en contexto de edición.
    * @param marca Instancia del DTO seleccionada en la vista.
    */
   abrirModalEditar(marca: MarcaDTO): void {
@@ -141,7 +138,7 @@ export class MarcaListComponent implements OnInit {
   }
 
   /**
-   * @description Oculta la ventana modal sin ejecutar cambios en la base de datos.
+   * @description Oculta la ventana modal sin ejecutar cambios.
    */
   cerrarModal(): void {
     this.modalVisible = false;
@@ -149,7 +146,7 @@ export class MarcaListComponent implements OnInit {
 
   /**
    * @description Procesa la persistencia de datos del formulario.
-   * Determina si se ejecuta una creación (POST) o una actualización (PUT) conservando el estado lógico.
+   * Aplica actualización o creación conservando el estado exacto de la tabla (UI).
    */
   guardarMarca(): void {
     if (this.marcaForm.invalid) {
@@ -160,15 +157,14 @@ export class MarcaListComponent implements OnInit {
     const formValues = this.marcaForm.value;
 
     if (this.modoEdicion && this.idMarcaActual) {
-      // Recupera el estado original para no alterarlo durante la edición general
       const marcaExistente = this.marcas.find(m => m.id === this.idMarcaActual);
       const marcaData: MarcaDTO = { ...formValues, estado: marcaExistente?.estado };
 
       this.marcaService.actualizar(this.idMarcaActual, marcaData).subscribe({
         next: () => {
           this.cerrarModal();
-          // Mantiene a la tabla visualmente en la misma página tras la edición
-          this.cargarMarcas({ first: this.firstItemIndex, rows: this.rowsPerPage });
+          // Congela la vista de la tabla recargando con los metadatos actuales
+          this.cargarMarcas(this.dt.createLazyLoadMetadata());
           this.messageService.add({ severity: 'success', summary: 'Actualizado', detail: 'Marca actualizada correctamente' });
         },
         error: (err) => {
@@ -177,13 +173,12 @@ export class MarcaListComponent implements OnInit {
         }
       });
     } else {
-      // Fuerza el estado activo por defecto al registrar una nueva marca
       const marcaData: MarcaDTO = { ...formValues, estado: true };
       this.marcaService.crear(marcaData).subscribe({
         next: () => {
           this.cerrarModal();
-          // Retorna a la primera página para visualizar la creación reciente
-          this.cargarMarcas({ first: 0, rows: this.rowsPerPage });
+          // Limpia la tabla y retorna a la página 1 para evidenciar la creación
+          this.dt.reset();
           this.messageService.add({ severity: 'success', summary: 'Creado', detail: 'Marca registrada correctamente' });
         },
         error: (err) => {
@@ -196,6 +191,7 @@ export class MarcaListComponent implements OnInit {
 
   /**
    * @description Solicita confirmación al usuario para ejecutar la baja lógica de un fabricante.
+   * Modificado para emitir una notificación tipo "info" con ícono de papelera.
    * @param marca Instancia del DTO a desactivar.
    */
   eliminarMarca(marca: MarcaDTO): void {
@@ -209,8 +205,14 @@ export class MarcaListComponent implements OnInit {
       accept: () => {
         this.marcaService.eliminar(marca.id!).subscribe({
           next: () => {
-            this.cargarMarcas({ first: this.firstItemIndex, rows: this.rowsPerPage });
-            this.messageService.add({ severity: 'success', summary: 'Eliminado', detail: 'Marca desactivada' });
+            // Mantiene el bloque de paginación activo
+            this.cargarMarcas(this.dt.createLazyLoadMetadata());
+            this.messageService.add({
+              severity: 'info',
+              summary: 'Eliminado',
+              detail: 'Marca desactivada correctamente',
+              icon: 'pi pi-trash'
+            });
           },
           error: (err) => {
             console.error(err);
@@ -237,8 +239,9 @@ export class MarcaListComponent implements OnInit {
         const marcaRestaurada: MarcaDTO = { ...marca, estado: true };
         this.marcaService.actualizar(marca.id!, marcaRestaurada).subscribe({
           next: () => {
-            this.cargarMarcas({ first: this.firstItemIndex, rows: this.rowsPerPage });
-            this.messageService.add({ severity: 'success', summary: 'Restaurado', detail: 'Marca reactivada' });
+            // Mantiene el bloque de paginación activo
+            this.cargarMarcas(this.dt.createLazyLoadMetadata());
+            this.messageService.add({ severity: 'success', summary: 'Restaurado', detail: 'Marca reactivada correctamente' });
           },
           error: (err) => {
             console.error(err);
