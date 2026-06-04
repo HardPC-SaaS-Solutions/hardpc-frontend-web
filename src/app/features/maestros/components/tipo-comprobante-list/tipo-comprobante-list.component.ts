@@ -1,11 +1,12 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 
 import { TipoComprobanteService } from '../../services/tipo-comprobante.service';
 import { TipoComprobanteDTO } from '../../../../core/models/tipo-comprobante.dto';
 
-import { TableModule } from 'primeng/table';
+// Módulos de PrimeNG
+import { TableModule, Table } from 'primeng/table';
 import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
 import { DialogModule } from 'primeng/dialog';
@@ -18,7 +19,8 @@ import { MessageService, ConfirmationService } from 'primeng/api';
 /**
  * @description Componente central para la gestión de Tipos de Comprobante.
  * Administra el listado paginado, creación, edición y control de estado
- * de los documentos contables estandarizados por SUNAT (ej. Boleta, Factura).
+ * de los documentos contables estandarizados por SUNAT (ej. Boleta, Factura),
+ * implementando el control de estado de la tabla mediante ViewChild.
  */
 @Component({
   selector: 'app-tipo-comprobante-list',
@@ -39,6 +41,9 @@ import { MessageService, ConfirmationService } from 'primeng/api';
 })
 export class TipoComprobanteListComponent implements OnInit {
 
+  /** Referencia nativa a la instancia de la tabla PrimeNG para gestionar su paginación y filtros. */
+  @ViewChild('dt') dt!: Table;
+
   // Inyección de dependencias
   private tipoComprobanteService = inject(TipoComprobanteService);
   private fb = inject(FormBuilder);
@@ -54,8 +59,6 @@ export class TipoComprobanteListComponent implements OnInit {
   loading = true;
   /** Cantidad de registros mostrados por página. */
   rowsPerPage = 10;
-  /** Almacena el índice del primer elemento de la página actual para evitar perder el foco al recargar. */
-  firstItemIndex: number = 0;
 
   // --- ESTADO DEL FORMULARIO Y MODAL ---
   /** Instancia del formulario reactivo para la gestión de datos. */
@@ -91,14 +94,12 @@ export class TipoComprobanteListComponent implements OnInit {
   cargarTiposComprobante(event: any): void {
     this.loading = true;
 
-    // Capturamos el índice actual para mantener la posición al refrescar la tabla
-    this.firstItemIndex = event.first !== undefined ? event.first : 0;
-
-    const page = this.firstItemIndex / (event.rows || this.rowsPerPage);
-    const size = event.rows || this.rowsPerPage;
+    const first = event.first ?? 0;
+    const rows = event.rows ?? this.rowsPerPage;
+    const page = first / rows;
     const buscar = event.globalFilter || '';
 
-    this.tipoComprobanteService.listarPaginado(page, size, buscar).subscribe({
+    this.tipoComprobanteService.listarPaginado(page, rows, buscar).subscribe({
       next: (response) => {
         this.tiposComprobante = response.content;
         this.totalRecords = response.totalElements;
@@ -147,6 +148,7 @@ export class TipoComprobanteListComponent implements OnInit {
 
   /**
    * @description Procesa la persistencia de datos decidiendo entre POST o PUT.
+   * Mantiene la tabla congelada en su vista actual (edición) o la reinicia (creación).
    */
   guardar(): void {
     if (this.tipoComprobanteForm.invalid) {
@@ -163,8 +165,8 @@ export class TipoComprobanteListComponent implements OnInit {
       this.tipoComprobanteService.actualizar(this.idActual, data).subscribe({
         next: () => {
           this.cerrarModal();
-          // Mantiene a la tabla visualmente en la misma página tras la edición
-          this.cargarTiposComprobante({ first: this.firstItemIndex, rows: this.rowsPerPage });
+          // Congela y recarga la tabla preservando la página y filtros actuales
+          this.cargarTiposComprobante(this.dt.createLazyLoadMetadata());
           this.messageService.add({ severity: 'success', summary: 'Actualizado', detail: 'Tipo de comprobante actualizado' });
         },
         error: (err) => {
@@ -178,8 +180,8 @@ export class TipoComprobanteListComponent implements OnInit {
       this.tipoComprobanteService.crear(data).subscribe({
         next: () => {
           this.cerrarModal();
-          // Retorna a la primera página para visualizar la creación reciente
-          this.cargarTiposComprobante({ first: 0, rows: this.rowsPerPage });
+          // Reinicia el estado de la tabla, volviendo a la página 1
+          this.dt.reset();
           this.messageService.add({ severity: 'success', summary: 'Creado', detail: 'Tipo de comprobante registrado' });
         },
         error: (err) => {
@@ -205,9 +207,14 @@ export class TipoComprobanteListComponent implements OnInit {
       accept: () => {
         this.tipoComprobanteService.eliminar(item.id!).subscribe({
           next: () => {
-            // Mantiene la posición en la página actual
-            this.cargarTiposComprobante({ first: this.firstItemIndex, rows: this.rowsPerPage });
-            this.messageService.add({ severity: 'success', summary: 'Eliminado', detail: 'Registro desactivado' });
+            // Mantiene el bloque de paginación activo
+            this.cargarTiposComprobante(this.dt.createLazyLoadMetadata());
+            this.messageService.add({
+              severity: 'info',
+              summary: 'Eliminado',
+              detail: 'Registro desactivado',
+              icon: 'pi pi-trash'
+            });
           },
           error: (err) => {
             console.error(err);
@@ -234,8 +241,8 @@ export class TipoComprobanteListComponent implements OnInit {
         const data: TipoComprobanteDTO = { ...item, estado: true };
         this.tipoComprobanteService.actualizar(item.id!, data).subscribe({
           next: () => {
-            // Mantiene la posición en la página actual
-            this.cargarTiposComprobante({ first: this.firstItemIndex, rows: this.rowsPerPage });
+            // Mantiene el bloque de paginación activo
+            this.cargarTiposComprobante(this.dt.createLazyLoadMetadata());
             this.messageService.add({ severity: 'success', summary: 'Restaurado', detail: 'Registro reactivado' });
           },
           error: (err) => {
