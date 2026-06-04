@@ -1,11 +1,12 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 
 import { LocalService } from '../../services/local.service';
 import { LocalDTO } from '../../../../core/models/local.dto';
 
-import { TableModule } from 'primeng/table';
+// Módulos de PrimeNG
+import { TableModule, Table } from 'primeng/table';
 import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
 import { DialogModule } from 'primeng/dialog';
@@ -17,8 +18,8 @@ import { MessageService, ConfirmationService } from 'primeng/api';
 
 /**
  * @description Componente central para la gestión de locales en el sistema.
- * Administra el listado paginado, creación, edición y control de estado (activación/desactivación)
- * de las sucursales físicas o puntos de venta.
+ * Administra las sucursales físicas (puntos de venta) de HardPC implementando
+ * un control avanzado del estado de la tabla mediante ViewChild.
  */
 @Component({
   selector: 'app-local-list',
@@ -39,6 +40,9 @@ import { MessageService, ConfirmationService } from 'primeng/api';
 })
 export class LocalListComponent implements OnInit {
 
+  /** Referencia nativa a la instancia de la tabla PrimeNG para gestionar su paginación de forma directa. */
+  @ViewChild('dt') dt!: Table;
+
   // Inyección de dependencias
   private localService = inject(LocalService);
   private fb = inject(FormBuilder);
@@ -54,8 +58,6 @@ export class LocalListComponent implements OnInit {
   loading = true;
   /** Cantidad de registros mostrados por página. */
   rowsPerPage = 10;
-  /** Almacena el índice del primer elemento de la página actual para evitar perder el foco al recargar. */
-  firstItemIndex: number = 0;
 
   // --- ESTADO DEL FORMULARIO Y MODAL ---
   /** Instancia del formulario reactivo para la gestión de datos. */
@@ -89,19 +91,18 @@ export class LocalListComponent implements OnInit {
 
   /**
    * @description Carga el listado paginado de locales desde la API.
+   * Delega el cálculo de paginación a los metadatos dinámicos proporcionados por PrimeNG.
    * @param event Objeto de evento emitido por la tabla PrimeNG.
    */
   cargarLocales(event: any): void {
     this.loading = true;
 
-    // Capturamos el índice actual para mantener la posición al refrescar la tabla
-    this.firstItemIndex = event.first !== undefined ? event.first : 0;
-
-    const page = this.firstItemIndex / (event.rows || this.rowsPerPage);
-    const size = event.rows || this.rowsPerPage;
+    const first = event.first ?? 0;
+    const rows = event.rows ?? this.rowsPerPage;
+    const page = first / rows;
     const buscar = event.globalFilter || '';
 
-    this.localService.listarPaginado(page, size, buscar).subscribe({
+    this.localService.listarPaginado(page, rows, buscar).subscribe({
       next: (response) => {
         this.locales = response.content;
         this.totalRecords = response.totalElements;
@@ -152,7 +153,7 @@ export class LocalListComponent implements OnInit {
 
   /**
    * @description Procesa la persistencia de datos decidiendo entre POST o PUT.
-   * Mantiene la página actual de la tabla en actualizaciones, y retorna a la primera en creaciones.
+   * Mantiene la tabla congelada en su vista actual (edición) o la reinicia (creación).
    */
   guardar(): void {
     if (this.localForm.invalid) {
@@ -169,8 +170,8 @@ export class LocalListComponent implements OnInit {
       this.localService.actualizar(this.idActual, data).subscribe({
         next: () => {
           this.cerrarModal();
-          // Mantiene a la tabla visualmente en la misma página tras la edición
-          this.cargarLocales({ first: this.firstItemIndex, rows: this.rowsPerPage });
+          // Congela y recarga la tabla preservando la página y filtros actuales
+          this.cargarLocales(this.dt.createLazyLoadMetadata());
           this.messageService.add({ severity: 'success', summary: 'Actualizado', detail: 'Local actualizado correctamente' });
         },
         error: (err) => {
@@ -184,8 +185,8 @@ export class LocalListComponent implements OnInit {
       this.localService.crear(data).subscribe({
         next: () => {
           this.cerrarModal();
-          // Retorna a la primera página para visualizar la creación reciente
-          this.cargarLocales({ first: 0, rows: this.rowsPerPage });
+          // Reinicia el estado de la tabla, volviendo a la página 1
+          this.dt.reset();
           this.messageService.add({ severity: 'success', summary: 'Creado', detail: 'Local registrado correctamente' });
         },
         error: (err) => {
@@ -211,9 +212,14 @@ export class LocalListComponent implements OnInit {
       accept: () => {
         this.localService.eliminar(local.id!).subscribe({
           next: () => {
-            // Mantiene la posición en la página actual
-            this.cargarLocales({ first: this.firstItemIndex, rows: this.rowsPerPage });
-            this.messageService.add({ severity: 'success', summary: 'Eliminado', detail: 'Local desactivado correctamente' });
+            // Mantiene el bloque de paginación activo
+            this.cargarLocales(this.dt.createLazyLoadMetadata());
+            this.messageService.add({
+              severity: 'info',
+              summary: 'Eliminado',
+              detail: 'Local desactivado correctamente',
+              icon: 'pi pi-trash'
+            });
           },
           error: (err) => {
             console.error(err);
@@ -240,8 +246,8 @@ export class LocalListComponent implements OnInit {
         const data: LocalDTO = { ...local, estado: true };
         this.localService.actualizar(local.id!, data).subscribe({
           next: () => {
-            // Mantiene la posición en la página actual
-            this.cargarLocales({ first: this.firstItemIndex, rows: this.rowsPerPage });
+            // Mantiene el bloque de paginación activo
+            this.cargarLocales(this.dt.createLazyLoadMetadata());
             this.messageService.add({ severity: 'success', summary: 'Restaurado', detail: 'Local reactivado correctamente' });
           },
           error: (err) => {
