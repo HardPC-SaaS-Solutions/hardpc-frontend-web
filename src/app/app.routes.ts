@@ -4,7 +4,7 @@ import { LoginComponent } from './features/auth/components/login/login.component
 import { authGuard } from './core/guards/auth-guard';
 
 import { CategoriaListComponent } from './features/maestros/components/categoria-list/categoria-list.component';
-import { TipoComprobanteListComponent } from './features/maestros/components/tipo-comprobante-list/tipo-comprobante-list';
+import { TipoComprobanteListComponent } from './features/maestros/components/tipo-comprobante-list/tipo-comprobante-list.component';
 import { LocalListComponent } from './features/maestros/components/local-list/local-list.component';
 
 /**

@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { TipoComprobanteListComponent } from './tipo-comprobante-list';
+import { TipoComprobanteListComponent } from './tipo-comprobante-list.component';
 
 describe('TipoComprobanteList', () => {
   let component: TipoComprobanteListComponent;
