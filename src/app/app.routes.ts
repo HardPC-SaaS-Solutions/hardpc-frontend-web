@@ -6,6 +6,8 @@ import { authGuard } from './core/guards/auth-guard';
 import { CategoriaListComponent } from './features/maestros/components/categoria-list/categoria-list.component';
 import { TipoComprobanteListComponent } from './features/maestros/components/tipo-comprobante-list/tipo-comprobante-list.component';
 import { LocalListComponent } from './features/maestros/components/local-list/local-list.component';
+import { MarcaListComponent } from './features/maestros/components/marca-list/marca-list.component';
+import { FormaPagoListComponent } from './features/maestros/components/forma-pago-list/forma-pago-list.component';
 
 /**
  * @description Configuración principal de enrutamiento para el Sistema Administrativo de HardPC.
@@ -36,8 +38,15 @@ export const routes: Routes = [
       {
         path: 'locales',
         component: LocalListComponent
+      },
+      {
+        path: 'marcas',
+        component: MarcaListComponent
+      },
+      {
+        path: 'formas-pago',
+        component: FormaPagoListComponent
       }
-
 
     ]
   },

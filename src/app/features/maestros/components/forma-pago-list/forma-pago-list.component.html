@@ -1,0 +1,91 @@
+<div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+
+    <div class="flex justify-between items-center mb-6">
+        <div>
+            <h2 class="text-2xl font-bold text-gray-800">Formas de Pago</h2>
+            <p class="text-sm text-gray-500 font-medium">Gestión de métodos de pago aceptados en caja</p>
+        </div>
+
+        <div class="flex gap-3">
+            <span class="relative inline-block">
+                <i class="pi pi-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 z-10"></i>
+                <input pInputText type="text" (input)="dt.filterGlobal($any($event.target).value, 'contains')"
+                    placeholder="Buscar registro..." class="!pl-10 w-64" />
+            </span>
+            <p-button label="Nuevo" icon="pi pi-plus" styleClass="p-button-primary shadow-md shadow-blue-500/30"
+                (click)="abrirModalNuevo()"></p-button>
+        </div>
+    </div>
+
+    <p-table #dt [value]="formasPago" [lazy]="true" (onLazyLoad)="cargarFormasPago($event)"
+        [rows]="rowsPerPage" [totalRecords]="totalRecords" [paginator]="true" [loading]="loading"
+        [rowsPerPageOptions]="[5, 10, 20]" [showCurrentPageReport]="true"
+        currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} registros" styleClass="p-datatable-sm"
+        class="border-t border-gray-100">
+
+        <ng-template pTemplate="header">
+            <tr>
+                <th class="w-16 text-center">N°</th>
+                <th>Descripción</th>
+                <th class="w-24">Estado</th>
+                <th class="w-28 text-center">Acciones</th>
+            </tr>
+        </ng-template>
+
+        <ng-template pTemplate="body" let-item let-rowIndex="rowIndex">
+            <tr class="hover:bg-gray-50 transition-colors" [ngClass]="{'opacity-60': !item.estado}">
+                <td class="font-semibold text-gray-500 text-center">{{ rowIndex + 1 }}</td>
+                <td class="font-bold text-gray-900">{{ item.descripcion }}</td>
+                <td>
+                    <p-tag [severity]="item.estado ? 'success' : 'danger'" [value]="item.estado ? 'Activo' : 'Inactivo'"></p-tag>
+                </td>
+                <td class="text-center">
+                    <div class="flex items-center justify-center gap-1">
+                        <ng-container *ngIf="item.estado">
+                            <p-button icon="pi pi-pencil" styleClass="p-button-rounded p-button-text p-button-info p-button-sm" (click)="abrirModalEditar(item)"></p-button>
+                            <p-button icon="pi pi-trash" styleClass="p-button-rounded p-button-text p-button-danger p-button-sm" (click)="eliminar(item)"></p-button>
+                        </ng-container>
+                        <ng-container *ngIf="!item.estado">
+                            <p-button icon="pi pi-refresh" styleClass="p-button-rounded p-button-text p-button-success p-button-sm" (click)="restaurar(item)" pTooltip="Restaurar"></p-button>
+                        </ng-container>
+                    </div>
+                </td>
+            </tr>
+        </ng-template>
+
+        <ng-template pTemplate="emptymessage">
+            <tr>
+                <td colspan="4" class="text-center py-8 text-gray-500 font-medium">
+                    <i class="pi pi-inbox text-2xl mb-2 text-gray-400 block"></i>
+                    No se encontraron formas de pago registradas.
+                </td>
+            </tr>
+        </ng-template>
+    </p-table>
+
+</div>
+
+<p-dialog [header]="modoEdicion ? 'Editar Forma de Pago' : 'Nueva Forma de Pago'" [(visible)]="modalVisible" [modal]="true"
+    [style]="{ width: '400px' }" [draggable]="false" [resizable]="false" styleClass="p-fluid">
+
+    <form [formGroup]="formaPagoForm" (ngSubmit)="guardar()" class="mt-4 flex flex-col gap-4">
+        <div class="flex flex-col gap-1">
+            <label for="descripcion" class="font-medium text-gray-700 text-sm">Descripción <span class="text-red-500">*</span></label>
+            <input pInputText id="descripcion" formControlName="descripcion" placeholder="Ej. Efectivo, Yape, Tarjeta Visa..." autocomplete="off" />
+            <small class="text-red-500" *ngIf="formaPagoForm.get('descripcion')?.invalid && formaPagoForm.get('descripcion')?.touched">
+                La descripción es obligatoria y no debe exceder 50 caracteres.
+            </small>
+        </div>
+    </form>
+
+    <ng-template pTemplate="footer">
+        <div class="flex justify-end gap-2 mt-4">
+            <p-button label="Cancelar" icon="pi pi-times" styleClass="p-button-text p-button-secondary" (click)="cerrarModal()"></p-button>
+            <p-button [label]="modoEdicion ? 'Actualizar' : 'Guardar'" icon="pi pi-check" styleClass="p-button-primary" (click)="guardar()"></p-button>
+        </div>
+    </ng-template>
+
+</p-dialog>
+
+<p-toast position="top-right"></p-toast>
+<p-confirmDialog [style]="{width: '450px'}"></p-confirmDialog>
