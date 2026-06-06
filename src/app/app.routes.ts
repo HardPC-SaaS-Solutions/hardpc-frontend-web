@@ -9,6 +9,7 @@ import { LocalListComponent } from './features/maestros/components/local-list/lo
 import { MarcaListComponent } from './features/maestros/components/marca-list/marca-list.component';
 import { FormaPagoListComponent } from './features/maestros/components/forma-pago-list/forma-pago-list.component';
 import { RolListComponent } from './features/maestros/components/rol-list/rol-list.component';
+import { UnidadMedidaListComponent } from './features/maestros/components/unidad-medida-list/unidad-medida-list.component';
 
 /**
  * @description Configuración principal de enrutamiento para el Sistema Administrativo de HardPC.
@@ -51,6 +52,10 @@ export const routes: Routes = [
       {
         path: 'roles',
         component: RolListComponent
+      },
+      {
+        path: 'unidades-medida',
+        component: UnidadMedidaListComponent
       }
 
     ]
