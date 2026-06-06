@@ -8,6 +8,7 @@ import { TipoComprobanteListComponent } from './features/maestros/components/tip
 import { LocalListComponent } from './features/maestros/components/local-list/local-list.component';
 import { MarcaListComponent } from './features/maestros/components/marca-list/marca-list.component';
 import { FormaPagoListComponent } from './features/maestros/components/forma-pago-list/forma-pago-list.component';
+import { RolListComponent } from './features/maestros/components/rol-list/rol-list.component';
 
 /**
  * @description Configuración principal de enrutamiento para el Sistema Administrativo de HardPC.
@@ -46,6 +47,10 @@ export const routes: Routes = [
       {
         path: 'formas-pago',
         component: FormaPagoListComponent
+      },
+      {
+        path: 'roles',
+        component: RolListComponent
       }
 
     ]
