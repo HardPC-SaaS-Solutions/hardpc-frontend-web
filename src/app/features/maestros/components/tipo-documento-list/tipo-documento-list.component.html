@@ -1,0 +1,133 @@
+<div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+
+  <div class="flex justify-between items-center mb-6">
+    <div>
+      <h2 class="text-2xl font-bold text-gray-800">Tipos de Documento</h2>
+      <p class="text-sm text-gray-500 font-medium">Gestión de identificaciones para clientes y personal</p>
+    </div>
+
+    <div class="flex gap-3">
+      <span class="relative inline-block">
+        <i class="pi pi-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 z-10"></i>
+        <input pInputText type="text" (input)="dt.filterGlobal($any($event.target).value, 'contains')"
+          placeholder="Buscar documento..." class="!pl-10 w-64" />
+      </span>
+      <p-button label="Nuevo" icon="pi pi-plus" styleClass="p-button-primary shadow-md shadow-blue-500/30"
+        (click)="abrirModalNuevo()"></p-button>
+    </div>
+  </div>
+
+  <p-table #dt [value]="documentos" [lazy]="true" (onLazyLoad)="cargarDocumentos($event)" [rows]="rowsPerPage"
+    [totalRecords]="totalRecords" [paginator]="true" [loading]="loading" [rowsPerPageOptions]="[5, 10, 20]"
+    [showCurrentPageReport]="true" currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} registros"
+    styleClass="p-datatable-sm" class="border-t border-gray-100">
+
+    <ng-template pTemplate="header">
+      <tr>
+        <th class="w-16 text-center">N°</th>
+        <th class="w-32 text-center">Abreviatura</th>
+        <th>Nombre</th>
+        <th class="w-32 text-center">Longitud</th>
+        <th class="w-24">Estado</th>
+        <th class="w-28 text-center">Acciones</th>
+      </tr>
+    </ng-template>
+
+    <ng-template pTemplate="body" let-item let-rowIndex="rowIndex">
+      <tr class="hover:bg-gray-50 transition-colors" [ngClass]="{'opacity-60': !item.estado}">
+        <td class="font-semibold text-gray-500 text-center">{{ rowIndex + 1 }}</td>
+
+        <!-- Pastilla visual para la Abreviatura (DNI, RUC) -->
+        <td class="text-center">
+          <span class="bg-indigo-50 text-indigo-700 px-3 py-1 rounded-lg text-xs font-bold border border-indigo-100 tracking-wide">
+            {{ item.abreviatura }}
+          </span>
+        </td>
+
+        <td class="font-bold text-gray-900">{{ item.nombre }}</td>
+
+        <td class="text-center text-gray-600 font-medium">{{ item.longitudExacta }} dígitos</td>
+
+        <td>
+          <p-tag [severity]="item.estado ? 'success' : 'danger'" [value]="item.estado ? 'Activo' : 'Inactivo'"></p-tag>
+        </td>
+
+        <td class="text-center">
+          <div class="flex items-center justify-center gap-1">
+            <ng-container *ngIf="item.estado">
+              <p-button icon="pi pi-pencil" styleClass="p-button-rounded p-button-text p-button-info p-button-sm"
+                (click)="abrirModalEditar(item)"></p-button>
+              <p-button icon="pi pi-trash" styleClass="p-button-rounded p-button-text p-button-danger p-button-sm"
+                (click)="eliminar(item)"></p-button>
+            </ng-container>
+            <ng-container *ngIf="!item.estado">
+              <p-button icon="pi pi-refresh" styleClass="p-button-rounded p-button-text p-button-success p-button-sm"
+                (click)="restaurar(item)" pTooltip="Restaurar"></p-button>
+            </ng-container>
+          </div>
+        </td>
+      </tr>
+    </ng-template>
+
+    <ng-template pTemplate="emptymessage">
+      <tr>
+        <td colspan="6" class="text-center py-8 text-gray-500 font-medium">
+          <i class="pi pi-inbox text-2xl mb-2 text-gray-400 block"></i>
+          No se encontraron tipos de documento.
+        </td>
+      </tr>
+    </ng-template>
+  </p-table>
+
+</div>
+
+<p-dialog [header]="modoEdicion ? 'Editar Documento' : 'Nuevo Documento'" [(visible)]="modalVisible" [modal]="true"
+  [style]="{ width: '450px' }" [draggable]="false" [resizable]="false" styleClass="p-fluid">
+
+  <form [formGroup]="documentoForm" (ngSubmit)="guardar()" class="mt-4 flex flex-col gap-4">
+
+    <div class="flex flex-col gap-1">
+      <label for="nombre" class="font-medium text-gray-700 text-sm">Nombre <span class="text-red-500">*</span></label>
+      <input pInputText id="nombre" formControlName="nombre" placeholder="Ej. Documento Nacional de Identidad" autocomplete="off" />
+      <small class="text-red-500" *ngIf="documentoForm.get('nombre')?.invalid && documentoForm.get('nombre')?.touched">
+        El nombre es obligatorio (Máx. 50 caracteres).
+      </small>
+    </div>
+
+    <div class="grid grid-cols-2 gap-4">
+      <div class="flex flex-col gap-1">
+        <label for="abreviatura" class="font-medium text-gray-700 text-sm">Abreviatura <span class="text-red-500">*</span></label>
+        <!-- Clase uppercase para forzar mayúsculas visualmente en tiempo real -->
+        <input pInputText id="abreviatura" formControlName="abreviatura" placeholder="Ej. DNI, RUC" class="uppercase" autocomplete="off" />
+        <small class="text-red-500" *ngIf="documentoForm.get('abreviatura')?.hasError('required') && documentoForm.get('abreviatura')?.touched">
+          Requerida.
+        </small>
+        <small class="text-red-500" *ngIf="documentoForm.get('abreviatura')?.hasError('pattern') && documentoForm.get('abreviatura')?.touched">
+          Solo mayúsculas y números.
+        </small>
+      </div>
+
+      <div class="flex flex-col gap-1">
+        <label for="longitudExacta" class="font-medium text-gray-700 text-sm">Longitud <span class="text-red-500">*</span></label>
+        <p-inputNumber inputId="longitudExacta" formControlName="longitudExacta" placeholder="Ej. 8" [min]="1" [max]="20" [useGrouping]="false"></p-inputNumber>
+        <small class="text-red-500" *ngIf="documentoForm.get('longitudExacta')?.invalid && documentoForm.get('longitudExacta')?.touched">
+          Debe ser entre 1 y 20.
+        </small>
+      </div>
+    </div>
+
+  </form>
+
+  <ng-template pTemplate="footer">
+    <div class="flex justify-end gap-2 mt-4">
+      <p-button label="Cancelar" icon="pi pi-times" styleClass="p-button-text p-button-secondary"
+        (click)="cerrarModal()"></p-button>
+      <p-button [label]="modoEdicion ? 'Actualizar' : 'Guardar'" icon="pi pi-check" styleClass="p-button-primary"
+        (click)="guardar()"></p-button>
+    </div>
+  </ng-template>
+
+</p-dialog>
+
+<p-toast position="top-right"></p-toast>
+<p-confirmDialog [style]="{width: '450px'}"></p-confirmDialog>

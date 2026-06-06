@@ -10,6 +10,7 @@ import { MarcaListComponent } from './features/maestros/components/marca-list/ma
 import { FormaPagoListComponent } from './features/maestros/components/forma-pago-list/forma-pago-list.component';
 import { RolListComponent } from './features/maestros/components/rol-list/rol-list.component';
 import { UnidadMedidaListComponent } from './features/maestros/components/unidad-medida-list/unidad-medida-list.component';
+import { TipoDocumentoListComponent } from './features/maestros/components/tipo-documento-list/tipo-documento-list.component';
 
 /**
  * @description Configuración principal de enrutamiento para el Sistema Administrativo de HardPC.
@@ -56,8 +57,11 @@ export const routes: Routes = [
       {
         path: 'unidades-medida',
         component: UnidadMedidaListComponent
+      },
+      {
+        path: 'tipos-documento',
+        component: TipoDocumentoListComponent
       }
-
     ]
   },
   {
