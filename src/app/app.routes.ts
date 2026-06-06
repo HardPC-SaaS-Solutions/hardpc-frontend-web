@@ -11,63 +11,46 @@ import { FormaPagoListComponent } from './features/maestros/components/forma-pag
 import { RolListComponent } from './features/maestros/components/rol-list/rol-list.component';
 import { UnidadMedidaListComponent } from './features/maestros/components/unidad-medida-list/unidad-medida-list.component';
 import { TipoDocumentoListComponent } from './features/maestros/components/tipo-documento-list/tipo-documento-list.component';
+import { MaestrosDashboardComponent } from './features/maestros/components/maestros-dashboard/maestros-dashboard.component';
 
 /**
  * @description Configuración principal de enrutamiento para el Sistema Administrativo de HardPC.
- * Define la estructura de navegación, separando los accesos públicos de las áreas seguras del ERP.
+ * Define la estructura jerárquica de la aplicación, implementando protección mediante Guards
+ * para las áreas administrativas.
  */
 export const routes: Routes = [
   {
-    // Punto de entrada público para la autenticación del personal.
+    // Ruta pública: Punto de acceso al sistema.
     path: 'login',
     component: LoginComponent
   },
   {
-    // Estructura base (Layout) de la aplicación donde residirá la navegación principal.
+    // Ruta protegida: Estructura base del ERP que requiere autenticación.
     path: '',
     component: AppLayoutComponent,
-    // 🛡️ Barrera de seguridad: Exige un token válido para acceder a cualquier ruta hija.
     canActivate: [authGuard],
     children: [
-      // TODO: Registrar aquí los submódulos (lazy loading) de Inventario, Ventas e Ingresos.
+      // MÓDULO MAESTROS: Panel de control y gestión de catálogos base.
       {
-        path: 'categorias',
-        component: CategoriaListComponent
+        path: 'maestros',
+        component: MaestrosDashboardComponent
       },
-      {
-        path: 'tipos-comprobante',
-        component: TipoComprobanteListComponent
-      },
-      {
-        path: 'locales',
-        component: LocalListComponent
-      },
-      {
-        path: 'marcas',
-        component: MarcaListComponent
-      },
-      {
-        path: 'formas-pago',
-        component: FormaPagoListComponent
-      },
-      {
-        path: 'roles',
-        component: RolListComponent
-      },
-      {
-        path: 'unidades-medida',
-        component: UnidadMedidaListComponent
-      },
-      {
-        path: 'tipos-documento',
-        component: TipoDocumentoListComponent
-      }
+      // CRUDs de Catálogos Maestros
+      { path: 'maestros/roles', component: RolListComponent },
+      { path: 'maestros/locales', component: LocalListComponent },
+      { path: 'maestros/categorias', component: CategoriaListComponent },
+      { path: 'maestros/marcas', component: MarcaListComponent },
+      { path: 'maestros/unidades-medida', component: UnidadMedidaListComponent },
+      { path: 'maestros/tipos-documento', component: TipoDocumentoListComponent },
+      { path: 'maestros/formas-pago', component: FormaPagoListComponent },
+      { path: 'maestros/tipos-comprobante', component: TipoComprobanteListComponent },
+
+      // TODO: Implementar Lazy Loading para módulos de Inventario, Ventas e Ingresos aquí.
     ]
   },
   {
-    // Ruta comodín (Fallback): Intercepta cualquier URL inválida y redirige al inicio de sesión.
+    // Fallback: Redirección automática a login ante rutas no definidas.
     path: '**',
     redirectTo: 'login'
   }
-
 ];
