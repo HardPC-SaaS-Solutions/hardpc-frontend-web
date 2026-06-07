@@ -12,6 +12,7 @@ import { RolListComponent } from './features/maestros/components/rol-list/rol-li
 import { UnidadMedidaListComponent } from './features/maestros/components/unidad-medida-list/unidad-medida-list.component';
 import { TipoDocumentoListComponent } from './features/maestros/components/tipo-documento-list/tipo-documento-list.component';
 import { MaestrosDashboardComponent } from './features/maestros/components/maestros-dashboard/maestros-dashboard.component';
+import { UsuarioListComponent } from './features/usuarios/components/usuario-list/usuario-list.component';
 
 /**
  * @description Configuración principal de enrutamiento para el Sistema Administrativo de HardPC.
@@ -44,6 +45,7 @@ export const routes: Routes = [
       { path: 'maestros/tipos-documento', component: TipoDocumentoListComponent },
       { path: 'maestros/formas-pago', component: FormaPagoListComponent },
       { path: 'maestros/tipos-comprobante', component: TipoComprobanteListComponent },
+      { path: 'usuarios', component: UsuarioListComponent },
 
       // TODO: Implementar Lazy Loading para módulos de Inventario, Ventas e Ingresos aquí.
     ]
