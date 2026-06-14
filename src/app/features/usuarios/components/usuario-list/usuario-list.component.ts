@@ -52,7 +52,7 @@ export class UsuarioListComponent implements OnInit {
   // --- ESTADO DE LA TABLA Y COMBOS ---
   /** Colección de usuarios actuales renderizados en la tabla. */
   usuarios: UsuarioDTO[] = [];
-  /** Colección de roles disponibles para el selector del formulario. */
+  /** Colección de roles disponibles para el selector del formulario y filtros. */
   opcionesRol: RolDTO[] = [];
   /** Colección de tipos de documento disponibles para el selector del formulario. */
   opcionesTipoDoc: TipoDocumentoDTO[] = [];
@@ -63,6 +63,9 @@ export class UsuarioListComponent implements OnInit {
   loading: boolean = true;
   /** Cantidad de registros mostrados por página. */
   rowsPerPage: number = 10;
+
+  /** Almacena el ID del rol seleccionado en el filtro superior de la tabla para consultas segmentadas. */
+  filtroRol: number | null = null;
 
   // --- ESTADO DEL FORMULARIO Y MODAL ---
   /** Instancia del formulario reactivo para la gestión de datos del usuario. */
@@ -170,6 +173,7 @@ export class UsuarioListComponent implements OnInit {
 
   /**
    * @description Carga el listado paginado de usuarios desde la API.
+   * Delega la paginación y aplica inyección del filtro por rol directamente al backend.
    * @param event Objeto con los metadatos de paginación y filtros de la tabla.
    */
   cargarUsuarios(event: any): void {
@@ -179,7 +183,7 @@ export class UsuarioListComponent implements OnInit {
     const page = first / rows;
     const buscar = event.globalFilter || '';
 
-    this.usuarioService.listarPaginado(page, rows, buscar).subscribe({
+    this.usuarioService.listarPaginado(page, rows, buscar, this.filtroRol || undefined).subscribe({
       next: (res) => {
         this.usuarios = res.content;
         this.totalRecords = res.totalElements;

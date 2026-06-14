@@ -21,18 +21,24 @@ export class UsuarioService {
   private readonly URL = `${environment.apiUrl}/usuarios`;
 
   /**
-   * @description Obtiene una lista paginada de usuarios, soportando filtrado por texto.
+   * @description Obtiene una lista paginada de usuarios, soportando filtrado por texto y rol.
    * Ideal para la tabla principal de administración del personal.
    * @param page Índice de la página a consultar (inicia en 0).
    * @param size Cantidad de registros por página.
    * @param buscar Término de búsqueda opcional para filtrar los resultados (nombre, correo o username).
+   * @param idRol ID del rol opcional para filtrar la lista.
    * @returns Observable con la respuesta paginada desde el servidor.
    */
-  listarPaginado(page: number, size: number, buscar: string = ''): Observable<PageResponseDTO<UsuarioDTO>> {
+  listarPaginado(page: number, size: number, buscar: string = '', idRol?: number): Observable<PageResponseDTO<UsuarioDTO>> {
     let params = new HttpParams().set('page', page.toString()).set('size', size.toString());
 
     if (buscar) {
       params = params.set('buscar', buscar);
+    }
+
+    // ✨ Nuevo: Inyectamos el parámetro idRol si viene en la petición
+    if (idRol) {
+      params = params.set('idRol', idRol.toString());
     }
 
     return this.http.get<PageResponseDTO<UsuarioDTO>>(this.URL, { params });
