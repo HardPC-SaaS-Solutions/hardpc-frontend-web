@@ -398,4 +398,13 @@ export class UsuarioListComponent implements OnInit {
     if (!nombreEnum) return '';
     return nombreEnum.replace('ROLE_', '');
   }
+
+  /**
+   * @description Aplica el filtro por rol manteniendo el texto de búsqueda intacto.
+   * Evita usar dt.reset() para no perder el estado del input de texto.
+   */
+  filtrarPorRol(): void {
+    this.dt.first = 0; // Regresamos a la página 1 de forma manual
+    this.cargarUsuarios(this.dt.createLazyLoadMetadata()); // Disparamos la carga con los filtros vigentes
+  }
 }

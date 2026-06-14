@@ -6,12 +6,28 @@
       <p class="text-sm text-gray-500 font-medium">Gestión de accesos y credenciales de HardPC</p>
     </div>
 
-    <div class="flex gap-3">
+    <div class="flex flex-wrap gap-3 items-center">
+
+      <p-select [options]="opcionesRol" [(ngModel)]="filtroRol" optionLabel="descripcion" optionValue="id"
+                placeholder="Todos los roles" [showClear]="true" (onChange)="filtrarPorRol()"
+                styleClass="w-48 bg-gray-50 border-gray-200 text-sm">
+        <ng-template let-rol pTemplate="selectedItem">
+          <div class="flex items-center gap-2">
+            <i class="pi pi-filter text-gray-400 text-xs"></i>
+            <span class="font-bold">{{ formatearNombreRol(rol.nombre) }}</span>
+          </div>
+        </ng-template>
+        <ng-template let-rol pTemplate="item">
+          {{ formatearNombreRol(rol.nombre) }}
+        </ng-template>
+      </p-select>
+
       <span class="relative inline-block">
         <i class="pi pi-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 z-10"></i>
         <input pInputText type="text" (input)="dt.filterGlobal($any($event.target).value, 'contains')"
           placeholder="Buscar usuario..." class="!pl-10 w-64" />
       </span>
+
       <p-button label="Nuevo" icon="pi pi-user-plus" styleClass="p-button-primary shadow-md shadow-blue-500/30"
         (click)="abrirModalNuevo()"></p-button>
     </div>
@@ -101,7 +117,6 @@
 
   <form [formGroup]="usuarioForm" (ngSubmit)="guardar()" class="mt-4">
 
-    <!-- Sección de Datos Personales -->
     <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3 border-b pb-1">Datos Personales</h3>
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
       <div class="flex flex-col gap-1">
@@ -132,7 +147,6 @@
       </div>
     </div>
 
-    <!-- Sección de Contacto -->
     <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3 border-b pb-1">Contacto</h3>
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
       <div class="flex flex-col gap-1">
@@ -157,7 +171,6 @@
       </div>
     </div>
 
-    <!-- Sección de Credenciales -->
     <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3 border-b pb-1">Credenciales de Acceso</h3>
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
       <div class="flex flex-col gap-1">
@@ -184,14 +197,12 @@
         </small>
       </div>
 
-      <!-- Checkbox de Cambiar Contraseña (Solo en Edición) -->
       <div *ngIf="modoEdicion" class="flex items-center gap-2 mb-1 md:col-span-2 mt-2">
         <p-checkbox [(ngModel)]="habilitarCambioPassword" [binary]="true" (onChange)="toggleCambioPassword()"
                     [ngModelOptions]="{standalone: true}" inputId="cbPass"></p-checkbox>
         <label for="cbPass" class="text-sm font-bold text-gray-700 cursor-pointer">Actualizar contraseña de este usuario</label>
       </div>
 
-      <!-- Campo Contraseña -->
       <div class="flex flex-col gap-1 md:col-span-2" [ngClass]="{'opacity-50 pointer-events-none': modoEdicion && !habilitarCambioPassword}">
         <label class="font-medium text-gray-700 text-sm">Contraseña <span *ngIf="!modoEdicion || habilitarCambioPassword" class="text-red-500">*</span></label>
         <p-password formControlName="password" [toggleMask]="true" styleClass="w-full" [inputStyle]="{'width':'100%'}"
