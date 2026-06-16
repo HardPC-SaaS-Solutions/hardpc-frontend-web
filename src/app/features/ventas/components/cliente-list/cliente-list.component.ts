@@ -21,7 +21,7 @@ import { MessageService, ConfirmationService } from 'primeng/api';
 /**
  * @description Componente central para la gestión del directorio de Clientes en HardPC.
  * Administra personas naturales y jurídicas implementando validaciones dinámicas de formularios,
- * control estricto de tipos de documentos, filtros de búsqueda y exportación de datos.
+ * control estricto de tipos de documentos, un motor robusto de manejo de excepciones y exportación de datos.
  */
 @Component({
   selector: 'app-cliente-list',
@@ -50,7 +50,6 @@ export class ClienteListComponent implements OnInit {
   // --- ESTADO DE LA TABLA Y COMBOS ---
   /** Colección de clientes actuales renderizados en la tabla. */
   clientes: ClienteDTO[] = [];
-
   /** Catálogo maestro inmutable de tipos de documento obtenidos del backend. */
   tiposDocumentoMaster: TipoDocumentoDTO[] = [];
   /** Colección filtrada dinámicamente según el tipo de cliente seleccionado. */
@@ -84,7 +83,7 @@ export class ClienteListComponent implements OnInit {
   modoEdicion: boolean = false;
   /** Almacena el ID del cliente en curso durante la edición. */
   idActual: number | null = null;
-  /** Bloquea el botón de guardado para prevenir dobles envíos. */
+  /** Bloquea el botón de guardado para prevenir dobles envíos y conflictos de red. */
   guardando: boolean = false;
   /** Almacena la longitud exacta requerida para el documento de identidad seleccionado. */
   longitudDocRequerida: number | null = null;
@@ -96,8 +95,8 @@ export class ClienteListComponent implements OnInit {
   filtroTipoCliente: any = null;
 
   /**
-   * @description Inicializa el componente, verifica permisos de usuario, construye el
-   * formulario y carga los catálogos maestros necesarios.
+   * @description Inicializa el componente, verifica permisos de usuario mediante RBAC,
+   * construye el formulario y carga los catálogos maestros necesarios.
    */
   ngOnInit(): void {
     this.puedeEliminar = this.authService.esAdminOSupervisor();
@@ -107,7 +106,7 @@ export class ClienteListComponent implements OnInit {
 
   /**
    * @description Construye el formulario reactivo base. Suscribe eventos reactivos
-   * al cambio del 'tipoCliente' para disparar mutaciones dinámicas en los demás controles.
+   * al cambio del 'tipoCliente' para disparar mutaciones dinámicas en los controles.
    */
   private inicializarFormulario(): void {
     this.clienteForm = this.fb.group({
@@ -124,7 +123,6 @@ export class ClienteListComponent implements OnInit {
       direccion: ['', Validators.maxLength(255)]
     });
 
-    // Escucha cambios en el tipo de cliente para mutar el formulario en tiempo real
     this.clienteForm.get('tipoCliente')?.valueChanges.subscribe(tipo => {
       this.aplicarValidacionesDinamicas(tipo);
     });
@@ -171,7 +169,7 @@ export class ClienteListComponent implements OnInit {
 
   /**
    * @description Restringe los documentos de identidad disponibles según el tipo de cliente.
-   * Empresa solo puede usar RUC. Persona Natural puede usar cualquier otro (DNI, CE, etc.).
+   * Las Empresas solo pueden usar RUC. Personas Naturales pueden usar DNI, CE, etc.
    * @param tipo Valor actual del enum TipoCliente seleccionado.
    */
   private filtrarDocumentosPorTipo(tipo: TipoCliente): void {
@@ -183,7 +181,6 @@ export class ClienteListComponent implements OnInit {
       this.opcionesTipoDoc = this.tiposDocumentoMaster.filter(doc => doc.abreviatura === 'RUC');
     }
 
-    // Valida si el documento previamente seleccionado sigue siendo válido bajo el nuevo filtro
     const idSeleccionado = this.clienteForm.get('idTipoDocumento')?.value;
     if (idSeleccionado) {
       const sigueSiendoValido = this.opcionesTipoDoc.some(doc => doc.id === idSeleccionado);
@@ -210,7 +207,7 @@ export class ClienteListComponent implements OnInit {
   /**
    * @description Reacciona a la selección de un tipo de documento para habilitar
    * la entrada del número de documento aplicando su longitud exacta como validación (ej. DNI = 8).
-   * @param event Objeto de evento emitido por el componente select.
+   * @param event Objeto de evento emitido por el componente select de PrimeNG.
    */
   onTipoDocumentoChange(event: any): void {
     const idSeleccionado = event.value;
@@ -232,8 +229,8 @@ export class ClienteListComponent implements OnInit {
   }
 
   /**
-   * @description Carga el listado paginado de clientes inyectando búsquedas y filtros de cabecera.
-   * @param event Objeto con los metadatos de paginación de PrimeNG.
+   * @description Carga el listado paginado de clientes inyectando búsquedas y el filtro de tipo de cliente.
+   * @param event Objeto con los metadatos de paginación de la tabla PrimeNG.
    */
   cargarClientes(event: any): void {
     this.loading = true;
@@ -325,20 +322,18 @@ export class ClienteListComponent implements OnInit {
     this.longitudDocRequerida = null;
 
     this.clienteForm.reset({ tipoCliente: TipoCliente.PERSONA_NATURAL });
-
     this.clienteForm.get('tipoCliente')?.enable();
     this.clienteForm.get('idTipoDocumento')?.enable();
     this.clienteForm.get('numeroDocumento')?.disable();
 
     this.aplicarValidacionesDinamicas(TipoCliente.PERSONA_NATURAL);
-
     this.modalVisible = true;
   }
 
   /**
    * @description Prepara el modal en contexto de edición con datos precargados.
    * Aplica la inmutabilidad arquitectónica: Identidad (Tipo de Cliente, Doc, Número)
-   * no pueden ser modificados una vez registrados.
+   * no puede ser modificada una vez registrada.
    * @param item Instancia del DTO del cliente a editar.
    */
   abrirModalEditar(item: ClienteDTO): void {
@@ -363,7 +358,6 @@ export class ClienteListComponent implements OnInit {
       direccion: item.direccion
     });
 
-    // REGLA DE NEGOCIO: La identidad legal es inmutable en edición
     this.clienteForm.get('idTipoDocumento')?.disable();
     this.clienteForm.get('numeroDocumento')?.disable();
     this.clienteForm.get('tipoCliente')?.disable();
@@ -379,19 +373,50 @@ export class ClienteListComponent implements OnInit {
   }
 
   /**
-   * @description Centraliza el manejo de excepciones devueltas por la API,
-   * proporcionando feedback amigable al usuario final.
-   * @param err Objeto de error HTTP.
+   * @description ✨ Motor de excepciones unificado de alta fidelidad.
+   * Intercepta la respuesta de error del backend y mapea la estructura de `ApiErrorResponse`
+   * y sus `detalles` (FieldErrorDTO) para mostrar al usuario notificaciones precisas
+   * sobre qué campos específicos fallaron en las validaciones de Spring Boot.
+   * @param err Objeto de error HTTP interceptado.
    */
   private manejarErrorBackend(err: any): void {
     this.guardando = false;
-    console.error('Error del backend:', err);
-    let mensaje = 'Ocurrió un error al procesar la solicitud.';
-    if (typeof err.error === 'string') mensaje = err.error;
-    else if (err.error?.message || err.error?.detail) mensaje = err.error.message || err.error.detail;
-    else if (err.status === 403) mensaje = 'No tienes los permisos necesarios para esta acción.';
+    console.error('Error capturado del backend:', err);
 
-    this.messageService.add({ severity: 'error', summary: err.status === 403 ? 'Acceso Denegado' : 'Error de Servidor', detail: mensaje });
+    let titulo = 'Error del Servidor';
+    let mensaje = 'Ocurrió un error inesperado al procesar la solicitud.';
+    let severidad = 'error';
+
+    if (err.status === 0) {
+      titulo = 'Error de Conexión';
+      mensaje = 'No se pudo conectar con el servidor. Verifique su conexión o intente más tarde.';
+    }
+    else if (err.error && err.error.message) {
+      titulo = err.error.error || `Error ${err.status}`;
+      mensaje = err.error.message;
+
+      if (err.status === 409 || err.status === 400 || err.status === 404) {
+        severidad = 'warn';
+      }
+
+      // 🌟 Integración exacta con FieldErrorDTO de Java: Extrae campo y mensaje específico
+      if (err.error.detalles && Array.isArray(err.error.detalles) && err.error.detalles.length > 0) {
+        const erroresCampos = err.error.detalles.map((d: any) => `${d.campo}: ${d.mensaje}`).join(' | ');
+        mensaje = `${mensaje} -> ${erroresCampos}`;
+      }
+    }
+    else if (err.status === 403 || err.status === 401) {
+      severidad = 'error';
+      titulo = err.status === 401 ? 'No Autorizado' : 'Acceso Denegado';
+      mensaje = 'No tienes los permisos necesarios o tu sesión ha expirado.';
+    }
+
+    this.messageService.add({
+      severity: severidad,
+      summary: titulo,
+      detail: mensaje,
+      life: 6000 // Tiempo extendido para permitir lectura de validaciones detalladas
+    });
   }
 
   /**
@@ -462,8 +487,7 @@ export class ClienteListComponent implements OnInit {
   }
 
   /**
-   * @description Solicita confirmación y reactiva un cliente previamente desactivado
-   * mediante el uso del endpoint optimizado PATCH.
+   * @description Solicita confirmación y reactiva un cliente previamente desactivado.
    * @param item Instancia del cliente a reactivar.
    */
   restaurar(item: ClienteDTO): void {

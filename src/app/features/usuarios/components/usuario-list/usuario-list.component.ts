@@ -23,7 +23,7 @@ import { CheckboxModule } from 'primeng/checkbox';
 /**
  * @description Componente central para la gestión de Usuarios y Accesos en HardPC.
  * Administra el personal del sistema implementando validaciones dinámicas avanzadas,
- * control de estado del formulario, manejo de errores robusto y seguridad en contraseñas.
+ * control de estado del formulario, filtros de tabla y un motor de excepciones de alta fidelidad.
  */
 @Component({
   selector: 'app-usuario-list',
@@ -38,7 +38,7 @@ import { CheckboxModule } from 'primeng/checkbox';
 })
 export class UsuarioListComponent implements OnInit {
 
-  /** Referencia nativa a la tabla PrimeNG para gestionar la paginación y refresco. */
+  /** Referencia nativa a la tabla PrimeNG para gestionar su ciclo de vida y estado (paginación/filtros). */
   @ViewChild('dt') dt!: Table;
 
   // Inyección de dependencias
@@ -92,7 +92,7 @@ export class UsuarioListComponent implements OnInit {
   private passwordPattern = /^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=\S+$).{8,20}$/;
 
   /**
-   * @description Inicializa el componente construyendo el formulario y cargando los catálogos.
+   * @description Inicializa el componente construyendo el formulario y cargando los catálogos maestros.
    */
   ngOnInit(): void {
     this.inicializarFormulario();
@@ -120,13 +120,11 @@ export class UsuarioListComponent implements OnInit {
 
   /**
    * @description Carga los catálogos necesarios para los selectores.
-   * Filtra estratégicamente el 'RUC' de los tipos de documento para el personal.
+   * Filtra estratégicamente el 'RUC' de los tipos de documento, ya que no aplica para personal.
    */
   private cargarCombos(): void {
     this.rolService.listarParaCombo().subscribe(res => this.opcionesRol = res);
-
     this.tipoDocService.listarParaCombo().subscribe(res => {
-      // Excluye el RUC ya que los empleados de HardPC se registran usualmente con DNI o CE
       this.opcionesTipoDoc = res.filter(doc => doc.abreviatura !== 'RUC');
     });
   }
@@ -156,7 +154,7 @@ export class UsuarioListComponent implements OnInit {
   }
 
   /**
-   * @description Activa o desactiva las validaciones y el control del campo contraseña.
+   * @description Activa o desactiva las validaciones y el control del campo contraseña en edición.
    * Útil para que los administradores decidan si blanquean o no la clave de un usuario.
    */
   toggleCambioPassword(): void {
@@ -205,13 +203,13 @@ export class UsuarioListComponent implements OnInit {
     this.idActual = null;
     this.guardando = false;
     this.longitudDocRequerida = null;
-    this.habilitarCambioPassword = true; // La contraseña inicial es obligatoria
+    this.habilitarCambioPassword = true;
 
     this.usuarioForm.reset();
 
-    // Rehabilitación de campos base para nuevos registros
+    // Rehabilitación de campos inmutables para la creación
     this.usuarioForm.get('idTipoDocumento')?.enable();
-    this.usuarioForm.get('numeroDocumento')?.disable(); // Se habilitará en 'onTipoDocumentoChange'
+    this.usuarioForm.get('numeroDocumento')?.disable(); // Se habilita tras seleccionar tipo
     this.usuarioForm.get('username')?.enable();
 
     this.usuarioForm.get('password')?.enable();
@@ -270,29 +268,49 @@ export class UsuarioListComponent implements OnInit {
   }
 
   /**
-   * @description Centraliza el manejo y traducción de errores devueltos por la API.
-   * Extrae mensajes amigables para el usuario o detecta bloqueos de seguridad (403).
-   * @param err Objeto de error HTTP.
+   * @description ✨ Motor de excepciones unificado de alta fidelidad.
+   * Intercepta la respuesta de error del backend y mapea la estructura de `ApiErrorResponse`
+   * y sus `detalles` (FieldErrorDTO) para mostrar al usuario notificaciones precisas
+   * sobre qué campos específicos fallaron en las validaciones de Spring Boot.
+   * @param err Objeto de error HTTP interceptado.
    */
   private manejarErrorBackend(err: any): void {
     this.guardando = false;
+    console.error('Error capturado del backend:', err);
 
-    console.error('Log completo del error del backend:', err);
+    let titulo = 'Error del Servidor';
+    let mensaje = 'Ocurrió un error inesperado al procesar la solicitud.';
+    let severidad = 'error';
 
-    let mensaje = 'Ocurrió un error al procesar la solicitud.';
+    if (err.status === 0) {
+      titulo = 'Error de Conexión';
+      mensaje = 'No se pudo conectar con el servidor. Verifique su conexión o intente más tarde.';
+    }
+    else if (err.error && err.error.message) {
+      titulo = err.error.error || `Error ${err.status}`;
+      mensaje = err.error.message;
 
-    if (typeof err.error === 'string') {
-      mensaje = err.error;
-    } else if (err.error?.message || err.error?.detail) {
-      mensaje = err.error.message || err.error.detail;
-    } else if (err.status === 403) {
-      mensaje = 'No tienes los permisos necesarios (ROLE_ADMIN) para esta acción.';
+      if (err.status === 409 || err.status === 400 || err.status === 404) {
+        severidad = 'warn';
+      }
+
+      // 🌟 Integración exacta con FieldErrorDTO de Java: Extrae campo y mensaje específico
+      if (err.error.detalles && Array.isArray(err.error.detalles) && err.error.detalles.length > 0) {
+        const erroresCampos = err.error.detalles.map((d: any) => `${d.campo}: ${d.mensaje}`).join(' | ');
+        mensaje = `${mensaje} -> ${erroresCampos}`;
+      }
+    }
+    else if (err.status === 403 || err.status === 401) {
+      severidad = 'error';
+      titulo = err.status === 401 ? 'No Autorizado' : 'Acceso Denegado';
+      mensaje = 'No tienes los permisos necesarios o tu sesión ha expirado.';
     }
 
     this.messageService.add({
-      severity: 'error',
-      summary: err.status === 403 ? 'Acceso Denegado' : 'Error de Servidor',
-      detail: mensaje
+      severity: severidad,
+      summary: titulo,
+      detail: mensaje,
+      life: 6000 // Tiempo extendido para permitir lectura de validaciones detalladas
     });
   }
 
@@ -304,17 +322,17 @@ export class UsuarioListComponent implements OnInit {
   guardar(): void {
     if (this.usuarioForm.invalid) {
       this.usuarioForm.markAllAsTouched();
+      this.messageService.add({ severity: 'warn', summary: 'Formulario Incompleto', detail: 'Revise los campos marcados en rojo.' });
       return;
     }
 
-    this.guardando = true; // Bloqueo de UX para prevenir doble clic
+    this.guardando = true;
     const formValues = this.usuarioForm.getRawValue();
 
     if (this.modoEdicion && this.idActual) {
       const existente = this.usuarios.find(x => x.id === this.idActual);
       const data: UsuarioDTO = { ...formValues, estado: existente?.estado };
 
-      // Se omite el password del DTO si no se solicitó cambiarlo para no sobreescribir con nulos
       if (!this.habilitarCambioPassword) {
         delete data.password;
       }
@@ -356,7 +374,7 @@ export class UsuarioListComponent implements OnInit {
         this.usuarioService.eliminar(item.id!).subscribe({
           next: () => {
             this.cargarUsuarios(this.dt.createLazyLoadMetadata());
-            this.messageService.add({ severity: 'info', summary: 'Desactivado', detail: 'Acceso revocado', icon: 'pi pi-user-minus' });
+            this.messageService.add({ severity: 'info', summary: 'Desactivado', detail: 'Acceso revocado' });
           },
           error: (err) => this.manejarErrorBackend(err)
         });
@@ -400,11 +418,11 @@ export class UsuarioListComponent implements OnInit {
   }
 
   /**
-   * @description Aplica el filtro por rol manteniendo el texto de búsqueda intacto.
-   * Evita usar dt.reset() para no perder el estado del input de texto.
+   * @description Reinicia la tabla a la primera página y recarga los datos
+   * al momento de aplicar un filtro rápido por Rol desde la cabecera.
    */
   filtrarPorRol(): void {
-    this.dt.first = 0; // Regresamos a la página 1 de forma manual
-    this.cargarUsuarios(this.dt.createLazyLoadMetadata()); // Disparamos la carga con los filtros vigentes
+    this.dt.first = 0;
+    this.cargarUsuarios(this.dt.createLazyLoadMetadata());
   }
 }
