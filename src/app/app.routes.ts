@@ -3,6 +3,7 @@ import { AppLayoutComponent } from './layout/app-layout/app-layout.component';
 import { LoginComponent } from './features/auth/components/login/login.component';
 import { authGuard } from './core/guards/auth-guard';
 
+// Componentes del Módulo Maestros
 import { CategoriaListComponent } from './features/maestros/components/categoria-list/categoria-list.component';
 import { TipoComprobanteListComponent } from './features/maestros/components/tipo-comprobante-list/tipo-comprobante-list.component';
 import { LocalListComponent } from './features/maestros/components/local-list/local-list.component';
@@ -12,30 +13,34 @@ import { RolListComponent } from './features/maestros/components/rol-list/rol-li
 import { UnidadMedidaListComponent } from './features/maestros/components/unidad-medida-list/unidad-medida-list.component';
 import { TipoDocumentoListComponent } from './features/maestros/components/tipo-documento-list/tipo-documento-list.component';
 import { MaestrosDashboardComponent } from './features/maestros/components/maestros-dashboard/maestros-dashboard.component';
+
+// Componentes de Seguridad y Directorios Comerciales
 import { UsuarioListComponent } from './features/usuarios/components/usuario-list/usuario-list.component';
-import { ClienteListComponent } from './features/ventas/components/cliente-list/cliente-list.component'; // ✨ Importación del nuevo módulo
+import { ClienteListComponent } from './features/ventas/components/cliente-list/cliente-list.component';
+import { ProveedorListComponent } from './features/compras/components/proveedor-list/proveedor-list.component';
 
 /**
  * @description Configuración principal de enrutamiento para el Sistema Administrativo de HardPC.
- * Define la estructura jerárquica de la aplicación, implementando protección mediante Guards
- * para las áreas administrativas.
+ * Define la jerarquía de navegación de la aplicación, agrupando las rutas por dominios de negocio
+ * e implementando protección estricta mediante Guards para las áreas operativas del ERP.
  */
 export const routes: Routes = [
   {
-    // Ruta pública: Punto de acceso al sistema.
+    // Ruta pública: Punto de acceso único para la autenticación del personal.
     path: 'login',
     component: LoginComponent
   },
   {
-    // Ruta protegida: Estructura base del ERP que requiere autenticación.
+    // Ruta protegida: Contenedor principal (Layout) del ERP que requiere token activo.
     path: '',
     component: AppLayoutComponent,
     canActivate: [authGuard],
     children: [
-      // MÓDULO MAESTROS: Panel de control y gestión de catálogos base.
-      { path: 'maestros', component: MaestrosDashboardComponent },
 
-      // CRUDs de Catálogos Maestros
+      // =======================================================
+      // MÓDULO MAESTROS: Panel de control y catálogos base
+      // =======================================================
+      { path: 'maestros', component: MaestrosDashboardComponent },
       { path: 'maestros/roles', component: RolListComponent },
       { path: 'maestros/locales', component: LocalListComponent },
       { path: 'maestros/categorias', component: CategoriaListComponent },
@@ -45,15 +50,20 @@ export const routes: Routes = [
       { path: 'maestros/formas-pago', component: FormaPagoListComponent },
       { path: 'maestros/tipos-comprobante', component: TipoComprobanteListComponent },
 
-      // Módulo de Accesos
+      // =======================================================
+      // MÓDULO DE SEGURIDAD Y ACCESOS
+      // =======================================================
       { path: 'usuarios', component: UsuarioListComponent },
 
-      // Módulo de Directorio / Ventas
+      // =======================================================
+      // MÓDULOS DE DIRECTORIO COMERCIAL (VENTAS Y COMPRAS)
+      // =======================================================
       { path: 'clientes', component: ClienteListComponent },
+      { path: 'proveedores', component: ProveedorListComponent }
     ]
   },
   {
-    // Fallback: Redirección automática a login ante rutas no definidas.
+    // Ruta comodín (Fallback): Intercepta cualquier URL no mapeada y redirige de forma segura al inicio.
     path: '**',
     redirectTo: 'login'
   }
