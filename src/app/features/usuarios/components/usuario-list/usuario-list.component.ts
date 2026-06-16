@@ -17,13 +17,15 @@ import { SelectModule } from 'primeng/select';
 import { PasswordModule } from 'primeng/password';
 import { ToastModule } from 'primeng/toast';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
+import { TooltipModule } from 'primeng/tooltip';
 import { MessageService, ConfirmationService } from 'primeng/api';
 import { CheckboxModule } from 'primeng/checkbox';
 
 /**
  * @description Componente central para la gestión de Usuarios y Accesos en HardPC.
  * Administra el personal del sistema implementando validaciones dinámicas avanzadas,
- * control de estado del formulario, filtros de tabla y un motor de excepciones de alta fidelidad.
+ * control de estado del formulario, filtros de tabla, exportación de datos y un
+ * motor de excepciones de alta fidelidad.
  */
 @Component({
   selector: 'app-usuario-list',
@@ -31,7 +33,7 @@ import { CheckboxModule } from 'primeng/checkbox';
   imports: [
     CommonModule, ReactiveFormsModule, FormsModule, TableModule, ButtonModule,
     TagModule, DialogModule, InputTextModule, SelectModule, PasswordModule,
-    ToastModule, ConfirmDialogModule, CheckboxModule
+    ToastModule, ConfirmDialogModule, CheckboxModule, TooltipModule
   ],
   providers: [MessageService, ConfirmationService],
   templateUrl: './usuario-list.component.html'
@@ -195,6 +197,68 @@ export class UsuarioListComponent implements OnInit {
   }
 
   /**
+   * @description Exportación con Atomicidad Total para la planilla de Usuarios.
+   * Divide de forma procesable cada propiedad de la metadata de accesos y personal de HardPC,
+   * garantizando compatibilidad estructural con MS Excel mediante la inyección del BOM UTF-8.
+   */
+  exportarDatos(): void {
+    if (!this.usuarios || this.usuarios.length === 0) {
+      this.messageService.add({ severity: 'warn', summary: 'Exportación', detail: 'No hay datos disponibles en esta página para exportar.' });
+      return;
+    }
+
+    // 1. Cabeceras estrictamente atómicas
+    const cabeceras = [
+      'Tipo Documento',
+      'Numero Documento',
+      'Nombres',
+      'Apellidos',
+      'Telefono',
+      'Email',
+      'Direccion',
+      'Username',
+      'Rol Asignado',
+      'Estado'
+    ];
+
+    // 2. Mapeo plano sin concatenaciones ambiguas y formato UI para el usuario final
+    const filas = this.usuarios.map(u => {
+      const estadoText = u.estado ? 'Activo' : 'Inactivo';
+      const rolLimpio = this.formatearNombreRol(u.nombreRol);
+
+      return [
+        u.abreviaturaTipoDocumento || '',
+        u.numeroDocumento || '',
+        u.nombres || '',
+        u.apellidos || '',
+        u.telefono || '',
+        u.email || '',
+        u.direccion || '',
+        u.username ? `@${u.username}` : '',
+        rolLimpio,
+        estadoText
+      ];
+    });
+
+    // 3. Compilación a estructura CSV segura con delimitación por comillas
+    const contenidoCSV = [
+      cabeceras.join(','),
+      ...filas.map(fila => fila.map(campo => `"${campo}"`).join(','))
+    ].join('\n');
+
+    // 4. Descarga física inyectando el Byte Order Mark (BOM) para compatibilidad con Excel Windows
+    const blob = new Blob(['\ufeff' + contenidoCSV], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'Planilla_Personal_HardPC.csv';
+    link.click();
+    URL.revokeObjectURL(url);
+
+    this.messageService.add({ severity: 'success', summary: 'Exportación', detail: 'Archivo del personal generado con éxito' });
+  }
+
+  /**
    * @description Prepara el modal en contexto de creación.
    * Reinicia bloqueos y hace obligatoria la definición de la contraseña inicial.
    */
@@ -209,7 +273,7 @@ export class UsuarioListComponent implements OnInit {
 
     // Rehabilitación de campos inmutables para la creación
     this.usuarioForm.get('idTipoDocumento')?.enable();
-    this.usuarioForm.get('numeroDocumento')?.disable(); // Se habilita tras seleccionar tipo
+    this.usuarioForm.get('numeroDocumento')?.disable();
     this.usuarioForm.get('username')?.enable();
 
     this.usuarioForm.get('password')?.enable();
@@ -268,7 +332,7 @@ export class UsuarioListComponent implements OnInit {
   }
 
   /**
-   * @description ✨ Motor de excepciones unificado de alta fidelidad.
+   * @description Motor unificado de excepciones de alta fidelidad.
    * Intercepta la respuesta de error del backend y mapea la estructura de `ApiErrorResponse`
    * y sus `detalles` (FieldErrorDTO) para mostrar al usuario notificaciones precisas
    * sobre qué campos específicos fallaron en las validaciones de Spring Boot.
@@ -294,7 +358,7 @@ export class UsuarioListComponent implements OnInit {
         severidad = 'warn';
       }
 
-      // 🌟 Integración exacta con FieldErrorDTO de Java: Extrae campo y mensaje específico
+      // Integración exacta con FieldErrorDTO de Java: Extrae campo y mensaje específico
       if (err.error.detalles && Array.isArray(err.error.detalles) && err.error.detalles.length > 0) {
         const erroresCampos = err.error.detalles.map((d: any) => `${d.campo}: ${d.mensaje}`).join(' | ');
         mensaje = `${mensaje} -> ${erroresCampos}`;
@@ -310,7 +374,7 @@ export class UsuarioListComponent implements OnInit {
       severity: severidad,
       summary: titulo,
       detail: mensaje,
-      life: 6000 // Tiempo extendido para permitir lectura de validaciones detalladas
+      life: 6000
     });
   }
 
