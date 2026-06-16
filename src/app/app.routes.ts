@@ -13,6 +13,7 @@ import { UnidadMedidaListComponent } from './features/maestros/components/unidad
 import { TipoDocumentoListComponent } from './features/maestros/components/tipo-documento-list/tipo-documento-list.component';
 import { MaestrosDashboardComponent } from './features/maestros/components/maestros-dashboard/maestros-dashboard.component';
 import { UsuarioListComponent } from './features/usuarios/components/usuario-list/usuario-list.component';
+import { ClienteListComponent } from './features/ventas/components/cliente-list/cliente-list.component'; // ✨ Importación del nuevo módulo
 
 /**
  * @description Configuración principal de enrutamiento para el Sistema Administrativo de HardPC.
@@ -32,10 +33,8 @@ export const routes: Routes = [
     canActivate: [authGuard],
     children: [
       // MÓDULO MAESTROS: Panel de control y gestión de catálogos base.
-      {
-        path: 'maestros',
-        component: MaestrosDashboardComponent
-      },
+      { path: 'maestros', component: MaestrosDashboardComponent },
+
       // CRUDs de Catálogos Maestros
       { path: 'maestros/roles', component: RolListComponent },
       { path: 'maestros/locales', component: LocalListComponent },
@@ -45,9 +44,12 @@ export const routes: Routes = [
       { path: 'maestros/tipos-documento', component: TipoDocumentoListComponent },
       { path: 'maestros/formas-pago', component: FormaPagoListComponent },
       { path: 'maestros/tipos-comprobante', component: TipoComprobanteListComponent },
+
+      // Módulo de Accesos
       { path: 'usuarios', component: UsuarioListComponent },
 
-      // TODO: Implementar Lazy Loading para módulos de Inventario, Ventas e Ingresos aquí.
+      // Módulo de Directorio / Ventas
+      { path: 'clientes', component: ClienteListComponent },
     ]
   },
   {
