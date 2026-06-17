@@ -14,10 +14,15 @@ import { UnidadMedidaListComponent } from './features/maestros/components/unidad
 import { TipoDocumentoListComponent } from './features/maestros/components/tipo-documento-list/tipo-documento-list.component';
 import { MaestrosDashboardComponent } from './features/maestros/components/maestros-dashboard/maestros-dashboard.component';
 
-// Componentes de Seguridad y Directorios Comerciales
+// Componentes de Seguridad y Accesos
 import { UsuarioListComponent } from './features/usuarios/components/usuario-list/usuario-list.component';
+
+// Componentes de Directorios Comerciales
 import { ClienteListComponent } from './features/ventas/components/cliente-list/cliente-list.component';
 import { ProveedorListComponent } from './features/compras/components/proveedor-list/proveedor-list.component';
+
+// Componentes de Inventario y Catálogo
+import { ProductoListComponent } from './features/inventario/components/producto-list/producto-list.component';
 
 /**
  * @description Configuración principal de enrutamiento para el Sistema Administrativo de HardPC.
@@ -59,7 +64,12 @@ export const routes: Routes = [
       // MÓDULOS DE DIRECTORIO COMERCIAL (VENTAS Y COMPRAS)
       // =======================================================
       { path: 'clientes', component: ClienteListComponent },
-      { path: 'proveedores', component: ProveedorListComponent }
+      { path: 'proveedores', component: ProveedorListComponent },
+
+      // =======================================================
+      // MÓDULO DE INVENTARIO Y ALMACÉN
+      // =======================================================
+      { path: 'productos', component: ProductoListComponent }
     ]
   },
   {
