@@ -39,6 +39,14 @@ export class ProveedorService {
   }
 
   /**
+   * @description Obtiene una lista ligera de proveedores activos para usar en menús desplegables.
+   * @returns Observable con la lista de proveedores.
+   */
+  listarParaCombo(): Observable<ProveedorDTO[]> {
+    return this.http.get<ProveedorDTO[]>(`${this.URL}/combo`);
+  }
+
+  /**
    * @description Recupera los detalles completos de un proveedor específico mediante su identificador.
    * @param id Identificador único del proveedor.
    * @returns Observable con los datos del registro solicitado.

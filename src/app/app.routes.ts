@@ -25,6 +25,9 @@ import { ProveedorListComponent } from './features/compras/components/proveedor-
 import { ProductoListComponent } from './features/inventario/components/producto-list/producto-list.component';
 import { AlmacenDashboardComponent } from './features/inventario/components/almacen-dashboard/almacen-dashboard.component';
 
+// Componentes del Módulo de Compras
+import { IngresoListComponent } from './features/compras/components/ingreso-list/ingreso-list.component';
+
 /**
  * @description Configuración principal de enrutamiento para el Sistema Administrativo de HardPC.
  * Define la jerarquía de navegación de la aplicación, agrupando las rutas por dominios de negocio
@@ -71,7 +74,12 @@ export const routes: Routes = [
       // MÓDULO DE INVENTARIO Y ALMACÉN
       // =======================================================
       { path: 'productos', component: ProductoListComponent },
-      { path: 'almacen', component: AlmacenDashboardComponent }
+      { path: 'almacen', component: AlmacenDashboardComponent },
+
+      // =======================================================
+      // MÓDULO DE COMPRAS Y ABASTECIMIENTO
+      // =======================================================
+      { path: 'compras', component: IngresoListComponent }
     ]
   },
   {

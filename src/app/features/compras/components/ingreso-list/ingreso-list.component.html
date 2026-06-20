@@ -1,0 +1,147 @@
+<div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+
+  <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 pb-6 border-b border-gray-100 gap-4">
+    <div>
+      <h2 class="text-2xl font-bold text-gray-800">Historial de Compras e Ingresos</h2>
+      <p class="text-sm text-gray-500 font-medium">Auditoría administrativa de facturas de proveedores y entradas al almacén</p>
+    </div>
+    <div *ngIf="puedeGestionar">
+      <p-button label="Registrar Nueva Compra" icon="pi pi-plus" styleClass="p-button-primary shadow-lg shadow-blue-500/30 font-bold"
+                (click)="abrirNuevaCompra()"></p-button>
+    </div>
+  </div>
+
+  <div class="bg-gray-50 p-4 rounded-xl border border-gray-200 mb-6 flex flex-wrap gap-4 items-end">
+
+    <div class="flex flex-col gap-1.5 flex-1 min-w-[150px]">
+      <label class="text-xs font-bold text-gray-500 uppercase tracking-wide">Fecha Inicio</label>
+      <input type="date" pInputText [(ngModel)]="filtroFechaInicio" class="w-full text-sm" />
+    </div>
+
+    <div class="flex flex-col gap-1.5 flex-1 min-w-[150px]">
+      <label class="text-xs font-bold text-gray-500 uppercase tracking-wide">Fecha Fin</label>
+      <input type="date" pInputText [(ngModel)]="filtroFechaFin" class="w-full text-sm" />
+    </div>
+
+    <div class="flex flex-col gap-1.5 flex-1 min-w-[200px]">
+      <label class="text-xs font-bold text-gray-500 uppercase tracking-wide">Proveedor</label>
+      <p-select [options]="proveedores" [(ngModel)]="filtroIdProveedor" optionLabel="razonSocial" optionValue="id"
+                placeholder="Todos los proveedores" [showClear]="true" styleClass="w-full text-sm"></p-select>
+    </div>
+
+    <div class="flex flex-col gap-1.5 flex-1 min-w-[200px]">
+      <label class="text-xs font-bold text-gray-500 uppercase tracking-wide">Sucursal Destino</label>
+      <p-select [options]="locales" [(ngModel)]="filtroIdLocal" optionLabel="nombre" optionValue="id"
+                placeholder="Todas las sucursales" [showClear]="true" styleClass="w-full text-sm"></p-select>
+    </div>
+
+    <div class="flex gap-2">
+      <p-button icon="pi pi-search" label="Filtrar" styleClass="p-button-secondary shadow-md" (click)="aplicarFiltros()"></p-button>
+      <p-button icon="pi pi-filter-slash" pTooltip="Limpiar filtros" styleClass="p-button-outlined p-button-secondary" (click)="limpiarFiltros()"></p-button>
+    </div>
+  </div>
+
+  <p-table #dtIngresos [value]="ingresos" [lazy]="true" (onLazyLoad)="cargarIngresos($event)" [rows]="10"
+           [totalRecords]="totalRecords" [paginator]="true" [loading]="loading" [rowsPerPageOptions]="[10, 20, 50]"
+           styleClass="p-datatable-sm">
+
+    <ng-template pTemplate="header">
+      <tr>
+        <th class="w-40 text-center">Fecha Ingreso</th>
+        <th class="w-44 text-center">Comprobante</th>
+        <th>Proveedor</th>
+        <th class="w-48">Local Destino</th>
+        <th class="w-32 text-right">Total</th>
+        <th class="w-32 text-center">Estado</th>
+        <th class="w-32 text-center">Acciones</th>
+      </tr>
+    </ng-template>
+
+    <ng-template pTemplate="body" let-ingreso>
+      <tr class="hover:bg-gray-50 transition-colors">
+        <td class="text-center font-medium text-xs text-gray-500">{{ ingreso.fechaIngreso | date:'dd/MM/yyyy HH:mm' }}</td>
+        <td>
+          <div class="flex flex-col text-center">
+            <span class="text-[10px] font-bold text-gray-400 uppercase">{{ ingreso.descripcionTipoComprobante }}</span>
+            <span class="font-mono text-sm font-bold text-blue-700 tracking-wide">{{ ingreso.serieComprobante }}-{{ ingreso.numeroComprobante }}</span>
+          </div>
+        </td>
+        <td class="font-semibold text-gray-800 line-clamp-2" [pTooltip]="ingreso.razonSocialProveedor">{{ ingreso.razonSocialProveedor }}</td>
+        <td class="text-xs font-medium text-gray-600"><i class="pi pi-building text-[10px] mr-1"></i>{{ ingreso.nombreLocal }}</td>
+        <td class="text-right font-bold text-gray-800">S/ {{ ingreso.totalCompra | number:'1.2-2' }}</td>
+        <td class="text-center">
+          <p-tag [severity]="getSeverityEstado(ingreso.estadoIngreso)" [value]="ingreso.estadoIngreso"></p-tag>
+        </td>
+        <td class="text-center flex justify-center gap-1">
+          <p-button icon="pi pi-eye" styleClass="p-button-text p-button-info p-button-sm" pTooltip="Ver Detalles" tooltipPosition="left" (click)="verDetalle(ingreso)"></p-button>
+          <p-button *ngIf="puedeGestionar && ingreso.estadoIngreso === 'REGISTRADO'" icon="pi pi-times-circle"
+                    styleClass="p-button-text p-button-danger p-button-sm" pTooltip="Anular Compra" tooltipPosition="left"
+                    (click)="anularCompra(ingreso)"></p-button>
+        </td>
+      </tr>
+    </ng-template>
+
+    <ng-template pTemplate="empty">
+      <tr><td colspan="7" class="text-center p-8 text-gray-500 font-medium">
+        <i class="pi pi-receipt text-3xl mb-3 block text-gray-400"></i>
+        No se encontraron registros de compras para los filtros aplicados.
+      </td></tr>
+    </ng-template>
+  </p-table>
+
+</div>
+
+<p-dialog *ngIf="ingresoSeleccionado" header="Detalle del Ingreso" [(visible)]="modalDetalleVisible" [modal]="true"
+          [style]="{ width: '800px', 'max-height': '90vh' }" [draggable]="false" [resizable]="false" styleClass="p-fluid">
+
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 bg-gray-50 p-4 rounded-xl border border-gray-200">
+    <div>
+      <p class="text-xs font-bold text-gray-400 uppercase">Proveedor</p>
+      <p class="font-semibold text-gray-800 text-sm">{{ ingresoSeleccionado.razonSocialProveedor }}</p>
+    </div>
+    <div>
+      <p class="text-xs font-bold text-gray-400 uppercase">Documento</p>
+      <p class="font-mono text-sm font-bold text-blue-700">{{ ingresoSeleccionado.descripcionTipoComprobante }} {{ ingresoSeleccionado.serieComprobante }}-{{ ingresoSeleccionado.numeroComprobante }}</p>
+    </div>
+    <div>
+      <p class="text-xs font-bold text-gray-400 uppercase">Recepción Física</p>
+      <p class="text-sm font-medium text-gray-600">{{ ingresoSeleccionado.nombreLocal }} <span class="text-gray-400 text-xs">(Por: {{ ingresoSeleccionado.username }})</span></p>
+    </div>
+    <div>
+      <p class="text-xs font-bold text-gray-400 uppercase">Resumen Financiero</p>
+      <p class="text-sm font-bold text-gray-800">Subtotal + IGV (S/ {{ ingresoSeleccionado.impuesto | number:'1.2-2' }}) = <span class="text-green-700">S/ {{ ingresoSeleccionado.totalCompra | number:'1.2-2' }}</span></p>
+    </div>
+  </div>
+
+  <div class="mb-2 text-sm font-bold text-gray-700 uppercase tracking-wide">Artículos Recibidos</div>
+
+  <p-table [value]="ingresoSeleccionado.detalles" styleClass="p-datatable-sm" [rowHover]="true">
+    <ng-template pTemplate="header">
+      <tr>
+        <th class="w-24 text-center">SKU</th>
+        <th>Descripción del Artículo</th>
+        <th class="w-24 text-center">Cant.</th>
+        <th class="w-28 text-right">P. Unit.</th>
+        <th class="w-32 text-right">Subtotal</th>
+      </tr>
+    </ng-template>
+    <ng-template pTemplate="body" let-det>
+      <tr>
+        <td class="font-bold text-gray-500 text-xs text-center">{{ det.codigoSkuProducto }}</td>
+        <td class="font-semibold text-gray-800 text-xs">{{ det.descripcionProducto }}</td>
+        <td class="text-center font-bold text-gray-700">{{ det.cantidad }}</td>
+        <td class="text-right text-gray-600 text-xs">S/ {{ det.precioCompraUnitario | number:'1.2-2' }}</td>
+        <td class="text-right font-bold text-gray-800 text-xs">S/ {{ (det.cantidad * det.precioCompraUnitario) | number:'1.2-2' }}</td>
+      </tr>
+    </ng-template>
+  </p-table>
+
+  <ng-template pTemplate="footer">
+    <div class="flex justify-end mt-2">
+      <p-button label="Cerrar Detalle" icon="pi pi-times" styleClass="p-button-text p-button-secondary" (click)="cerrarModalDetalle()"></p-button>
+    </div>
+  </ng-template>
+</p-dialog>
+
+<p-toast position="top-right"></p-toast>
+<p-confirmDialog [style]="{width: '450px'}"></p-confirmDialog>
