@@ -23,6 +23,7 @@ import { ProveedorListComponent } from './features/compras/components/proveedor-
 
 // Componentes de Inventario y Catálogo
 import { ProductoListComponent } from './features/inventario/components/producto-list/producto-list.component';
+import { AlmacenDashboardComponent } from './features/inventario/components/almacen-dashboard/almacen-dashboard.component';
 
 /**
  * @description Configuración principal de enrutamiento para el Sistema Administrativo de HardPC.
@@ -69,7 +70,8 @@ export const routes: Routes = [
       // =======================================================
       // MÓDULO DE INVENTARIO Y ALMACÉN
       // =======================================================
-      { path: 'productos', component: ProductoListComponent }
+      { path: 'productos', component: ProductoListComponent },
+      { path: 'almacen', component: AlmacenDashboardComponent }
     ]
   },
   {

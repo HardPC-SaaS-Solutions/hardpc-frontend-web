@@ -1,0 +1,268 @@
+<div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+
+  <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 pb-6 border-b border-gray-100 gap-4">
+    <div>
+      <h2 class="text-2xl font-bold text-gray-800">Control de Almacén e Inventario Físico</h2>
+      <p class="text-sm text-gray-500 font-medium">Supervisión cuantitativa de stock, trazabilidad de números de serie y auditoría del Kardex</p>
+    </div>
+
+    <div class="flex flex-col gap-1 w-full md:w-72">
+      <label class="font-bold text-xs text-gray-400 uppercase tracking-wider">Sucursal en Consulta</label>
+      <p-select [options]="locales" [(ngModel)]="localSeleccionadoId" optionLabel="nombre" optionValue="id"
+                placeholder="Seleccione Local" (onChange)="onLocalChange()"
+                styleClass="w-full bg-gray-50 border-gray-200 text-sm font-semibold text-gray-700 shadow-sm">
+        <ng-template let-loc pTemplate="selectedItem">
+          <div class="flex items-center gap-2 text-primary font-bold">
+            <i class="pi pi-building text-sm"></i>
+            <span>{{ loc.nombre }}</span>
+          </div>
+        </ng-template>
+      </p-select>
+    </div>
+  </div>
+
+  <p-tabs value="0" styleClass="w-full">
+
+    <p-tablist>
+        <p-tab value="0">Stock General (A granel)</p-tab>
+        <p-tab value="1">Control de Series (Hardware)</p-tab>
+        <p-tab value="2">Historial de Kardex (Movimientos)</p-tab>
+    </p-tablist>
+
+    <p-tabpanels>
+
+        <p-tabpanel value="0">
+          <div class="flex flex-col sm:flex-row justify-between items-center mb-4 gap-4">
+            <div class="flex items-center gap-2 bg-orange-50 px-3 py-2 rounded-lg border border-orange-100">
+              <p-checkbox [(ngModel)]="mostrarSoloBajoStock" [binary]="true" inputId="bajoStock" (onChange)="aplicarFiltroBajoStock()"></p-checkbox>
+              <label for="bajoStock" class="text-sm font-bold text-orange-800 cursor-pointer">Ver artículos críticos (Reponer)</label>
+            </div>
+
+            <div class="flex items-center gap-3">
+              <p-button icon="pi pi-file-excel" pTooltip="Exportar Stock" tooltipPosition="bottom"
+                        styleClass="p-button-success p-button-sm shadow-md" (click)="exportarStockCSV()" *ngIf="puedeGestionar"></p-button>
+
+              <span class="relative inline-block">
+                <i class="pi pi-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 z-10"></i>
+                <input pInputText type="text" (input)="dtStock.filterGlobal($any($event.target).value, 'contains')"
+                  placeholder="Buscar artículo o SKU..." class="!pl-10 w-72" />
+              </span>
+            </div>
+          </div>
+
+          <p-table #dtStock [value]="stocksLocales" [lazy]="true" (onLazyLoad)="cargarStockLocal($event)" [rows]="10"
+            [totalRecords]="totalRecordsStock" [paginator]="true" [loading]="loadingStock" [rowsPerPageOptions]="[5, 10, 20]"
+            [filterDelay]="600" styleClass="p-datatable-sm">
+
+            <ng-template pTemplate="header">
+              <tr>
+                <th class="w-24 text-center">SKU</th>
+                <th>Descripción del Artículo</th>
+                <th class="w-32 text-center">Stock Mínimo</th>
+                <th class="w-32 text-right">Stock Actual</th>
+                <th class="w-28 text-center" *ngIf="puedeGestionar">Acción</th>
+              </tr>
+            </ng-template>
+
+            <ng-template pTemplate="body" let-item>
+              <tr class="transition-colors" [ngClass]="{'bg-orange-50/70 hover:bg-orange-100/50': item.cantidadActual <= item.stockMinimo, 'hover:bg-gray-50': item.cantidadActual > item.stockMinimo}">
+                <td class="font-bold text-gray-600 text-xs text-center">{{ item.codigoSkuProducto }}</td>
+                <td class="font-semibold text-gray-800">{{ item.descripcionProducto }}</td>
+                <td class="text-center text-gray-500 font-medium">{{ item.stockMinimo }} uds</td>
+                <td class="text-right pr-4 font-bold">
+                  <span [ngClass]="item.cantidadActual <= item.stockMinimo ? 'text-orange-600' : 'text-gray-700'">
+                    {{ item.cantidadActual }} uds
+                  </span>
+                  <i *ngIf="item.cantidadActual <= item.stockMinimo" class="pi pi-exclamation-triangle text-orange-500 ml-1.5" pTooltip="Bajo el stock mínimo crítico" tooltipPosition="top"></i>
+                </td>
+                <td class="text-center" *ngIf="puedeGestionar">
+                  <p-button label="Trasladar" icon="pi pi-arrow-right" styleClass="p-button-text p-button-sm p-button-primary"
+                    [disabled]="item.cantidadActual <= 0" (click)="abrirTrasladoA_Granel(item)"></p-button>
+                </td>
+              </tr>
+            </ng-template>
+            <ng-template pTemplate="empty">
+              <tr><td colspan="5" class="text-center p-6 text-gray-500 font-medium"><i class="pi pi-box text-2xl mb-2 block"></i> No se encontraron registros de stock para los filtros aplicados.</td></tr>
+            </ng-template>
+          </p-table>
+        </p-tabpanel>
+
+        <p-tabpanel value="1">
+          <div class="flex flex-col sm:flex-row justify-end items-center gap-3 mb-4">
+
+            <p-button icon="pi pi-file-excel" pTooltip="Exportar Seriales" tooltipPosition="bottom"
+                      styleClass="p-button-success p-button-sm shadow-md" (click)="exportarSerialesCSV()" *ngIf="puedeGestionar"></p-button>
+
+            <p-select [options]="opcionesFiltroCondicion" [(ngModel)]="filtroCondicionSerial" optionLabel="label" optionValue="value"
+                      placeholder="Condición" [showClear]="true" (onChange)="aplicarFiltrosSerialesCliente()"
+                      styleClass="w-40 bg-gray-50 text-xs"></p-select>
+
+            <p-select [options]="opcionesFiltroEstadoSerial" [(ngModel)]="filtroEstadoSerial" optionLabel="label" optionValue="value"
+                      placeholder="Disponibilidad" [showClear]="true" (onChange)="aplicarFiltrosSerialesCliente()"
+                      styleClass="w-48 bg-gray-50 text-xs"></p-select>
+
+            <span class="relative inline-block">
+              <i class="pi pi-barcode absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 z-10"></i>
+              <input pInputText type="text" (input)="dtSerial.filterGlobal($any($event.target).value, 'contains')"
+                (focus)="onSearchFocus($event)" placeholder="Escanear o buscar Serie..." class="!pl-10 w-64" />
+            </span>
+          </div>
+
+          <p-table #dtSerial [value]="itemsSeriales" [lazy]="true" (onLazyLoad)="cargarItemsSeriales($event)" [rows]="10"
+            [totalRecords]="totalRecordsSerial" [paginator]="true" [loading]="loadingSerial" [rowsPerPageOptions]="[5, 10, 20]"
+            [filterDelay]="600" styleClass="p-datatable-sm">
+
+            <ng-template pTemplate="header">
+              <tr>
+                <th class="w-32 text-center">SKU</th>
+                <th>Descripción del Modelo</th>
+                <th class="w-48">Número de Serie (S/N)</th>
+                <th class="w-36 text-center">Condición</th>
+                <th class="w-36 text-center">Disponibilidad</th>
+                <th class="w-28 text-center" *ngIf="puedeGestionar">Acción</th>
+              </tr>
+            </ng-template>
+
+            <ng-template pTemplate="body" let-item>
+              <tr class="hover:bg-gray-50 transition-colors">
+                <td class="font-bold text-gray-500 text-xs text-center">{{ item.codigoSkuProducto }}</td>
+                <td class="font-semibold text-gray-800">{{ item.descripcionProducto }}</td>
+                <td class="font-mono text-sm font-bold text-blue-700 uppercase tracking-wider">{{ item.numeroSerie }}</td>
+
+                <!-- ✨ Cabo Suelto 1: Condición con estilo -->
+                <td class="text-center">
+                  <p-tag [severity]="getSeverityCondicion(item.condicion)" [value]="item.condicion"></p-tag>
+                </td>
+
+                <td class="text-center">
+                  <p-tag [severity]="getSeverityEstadoSerial(item.estadoDisponibilidad)" [value]="item.estadoDisponibilidad"></p-tag>
+                </td>
+                <td class="text-center" *ngIf="puedeGestionar">
+                  <p-button label="Trasladar" icon="pi pi-arrow-right" styleClass="p-button-text p-button-sm p-button-primary"
+                    [disabled]="item.estadoDisponibilidad !== 'DISPONIBLE'" (click)="abrirTrasladoSerial(item)"></p-button>
+                </td>
+              </tr>
+            </ng-template>
+            <ng-template pTemplate="empty">
+              <tr><td colspan="6" class="text-center p-6 text-gray-500 font-medium"><i class="pi pi-barcode text-2xl mb-2 block"></i> No se encontraron equipos serializados con los filtros actuales.</td></tr>
+            </ng-template>
+          </p-table>
+        </p-tabpanel>
+
+        <p-tabpanel value="2">
+          <!-- ✨ FIX 2: Selector de Tipos de Movimiento para Kardex -->
+          <div class="flex flex-col sm:flex-row justify-end items-center gap-3 mb-4">
+            <p-select [options]="opcionesFiltroTipoKardex" [(ngModel)]="filtroTipoKardex" optionLabel="label" optionValue="value"
+                      placeholder="Filtrar por Tipo" [showClear]="true" (onChange)="aplicarFiltroKardexCliente()"
+                      styleClass="w-48 bg-gray-50 text-xs"></p-select>
+
+            <p-button label="Descargar Ledger" icon="pi pi-file-excel" styleClass="p-button-success p-button-sm shadow-md"
+                      (click)="exportarKardexCSV()" *ngIf="puedeGestionar"></p-button>
+          </div>
+
+          <p-table #dtKardex [value]="movimientos" [lazy]="true" (onLazyLoad)="cargarMovimientosKardex($event)" [rows]="20"
+            [totalRecords]="totalRecordsKardex" [paginator]="true" [loading]="loadingKardex" styleClass="p-datatable-sm">
+
+            <ng-template pTemplate="header">
+              <tr>
+                <th class="w-44 text-center">Fecha y Hora</th>
+                <th class="w-28 text-center">Tipo</th>
+                <th class="w-28 text-center">SKU</th>
+                <th>Artículo / Trazabilidad</th>
+                <th class="w-24 text-center">Cant.</th>
+                <th class="w-36">Origen</th>
+                <th class="w-36">Destino</th>
+                <th class="w-32">Operador</th>
+              </tr>
+            </ng-template>
+
+            <ng-template pTemplate="body" let-item>
+              <tr class="hover:bg-gray-50 transition-colors">
+                <td class="text-center font-medium text-xs text-gray-500">{{ item.fechaHora | date:'dd/MM/yyyy HH:mm:ss' }}</td>
+                <td class="text-center">
+                  <span class="text-[10px] font-bold px-2 py-0.5 rounded border tracking-wide block"
+                    [ngClass]="{
+                      'bg-green-50 text-green-700 border-green-200': item.tipoMovimiento === 'ENTRADA',
+                      'bg-red-50 text-red-700 border-red-200': item.tipoMovimiento === 'SALIDA',
+                      'bg-purple-50 text-purple-700 border-purple-200': item.tipoMovimiento === 'TRASLADO'
+                    }">
+                    {{ item.tipoMovimiento }}
+                  </span>
+                </td>
+                <td class="font-mono text-xs text-center text-gray-600">{{ item.codigoSkuProducto }}</td>
+                <td>
+                  <div class="flex flex-col gap-0.5">
+                    <span class="font-semibold text-gray-800 line-clamp-1">{{ item.descripcionProducto }}</span>
+                    <span *ngIf="item.numeroSerie" class="text-[11px] font-mono font-bold text-blue-600 uppercase">
+                      S/N: {{ item.numeroSerie }}
+                    </span>
+                    <span *ngIf="item.observacion" class="text-[11px] italic text-gray-500 line-clamp-1 cursor-help"
+                          [pTooltip]="item.observacion" tooltipPosition="top">
+                      Obs: {{ item.observacion }}
+                    </span>
+                  </div>
+                </td>
+                <td class="text-center font-bold text-gray-700">{{ item.cantidad }}</td>
+                <td class="text-sm font-medium text-gray-600 truncate max-w-[140px]" [pTooltip]="item.nombreLocalOrigen">{{ item.nombreLocalOrigen || '-' }}</td>
+                <td class="text-sm font-medium text-gray-600 truncate max-w-[140px]" [pTooltip]="item.nombreLocalDestino">{{ item.nombreLocalDestino || '-' }}</td>
+                <td class="text-sm font-bold text-gray-500"><i class="pi pi-user text-[10px] mr-1"></i>{{ item.username }}</td>
+              </tr>
+            </ng-template>
+            <ng-template pTemplate="empty">
+              <tr><td colspan="8" class="text-center p-6 text-gray-500 font-medium"><i class="pi pi-book text-2xl mb-2 block"></i> No se han registrado movimientos de inventario en este local con los filtros aplicados.</td></tr>
+            </ng-template>
+          </p-table>
+        </p-tabpanel>
+
+    </p-tabpanels>
+  </p-tabs>
+</div>
+
+<!-- (Modal HTML remains exactly the same as you provided) -->
+<p-dialog header="Registrar Traslado de Inventario" [(visible)]="modalTrasladoVisible" [modal]="true"
+  [style]="{ width: '500px' }" [draggable]="false" [resizable]="false" styleClass="p-fluid">
+
+  <div class="p-3 bg-gray-50 border border-gray-200 rounded-xl mb-4 mt-2">
+    <div class="text-xs font-bold uppercase text-gray-400 tracking-wide mb-1">Artículo Seleccionado</div>
+    <div class="font-bold text-gray-800 text-sm leading-snug">{{ nombreProductoA_Trasladar }}</div>
+  </div>
+
+  <form [formGroup]="trasladoForm" (ngSubmit)="ejecutarTraslado()">
+
+    <div class="flex flex-col gap-1.5 mb-4">
+      <label class="font-medium text-gray-700 text-sm">Sucursal de Destino <span class="text-red-500">*</span></label>
+      <p-select formControlName="idLocalDestino" [options]="opcionesLocalesDestino" optionLabel="nombre" optionValue="id"
+                placeholder="Seleccione la sucursal de destino" [appendTo]="'body'"></p-select>
+      <small class="text-red-500" *ngIf="trasladoForm.get('idLocalDestino')?.invalid && trasladoForm.get('idLocalDestino')?.touched">
+        Debe especificar una sucursal destino diferente a la de origen.
+      </small>
+    </div>
+
+    <div class="flex flex-col gap-1.5 mb-4">
+      <label class="font-medium text-gray-700 text-sm">Cantidad a Movilizar <span class="text-red-500">*</span></label>
+      <p-inputNumber formControlName="cantidad" [min]="1" [max]="maxCantidadPermitida" [showButtons]="true"
+                     suffix=" unidades"></p-inputNumber>
+      <small class="text-gray-400 text-xs" *ngIf="!esTrasladoSerial">Stock disponible máximo para enviar: {{ maxCantidadPermitida }} uds.</small>
+      <small class="text-red-500" *ngIf="trasladoForm.get('cantidad')?.invalid && trasladoForm.get('cantidad')?.touched">
+        La cantidad debe estar entre 1 y el stock actual de la tienda.
+      </small>
+    </div>
+
+    <div class="flex flex-col gap-1.5 mb-2">
+      <label class="font-medium text-gray-700 text-sm">Motivo / Observación (Opcional)</label>
+      <input pInputText formControlName="observacion" autocomplete="off" placeholder="Ej. Requerimiento urgente por quiebre de stock" />
+    </div>
+
+  </form>
+
+  <ng-template pTemplate="footer">
+    <div class="flex justify-end gap-2 mt-2">
+      <p-button label="Cancelar" icon="pi pi-times" styleClass="p-button-text p-button-secondary" (click)="cerrarModalTraslado()" [disabled]="guardandoTraslado"></p-button>
+      <p-button label="Confirmar Movimiento" icon="pi pi-directions" styleClass="p-button-primary shadow-md shadow-blue-500/20" (click)="ejecutarTraslado()" [loading]="guardandoTraslado"></p-button>
+    </div>
+  </ng-template>
+
+</p-dialog>
+
+<p-toast position="top-right"></p-toast>
+<p-confirmDialog [style]="{width: '450px'}"></p-confirmDialog>
