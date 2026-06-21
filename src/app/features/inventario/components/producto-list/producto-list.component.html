@@ -129,101 +129,23 @@
 
 </div>
 
-<p-dialog [header]="modoEdicion ? 'Editar Producto' : 'Registrar Producto'" [(visible)]="modalVisible" [modal]="true"
-  [style]="{ width: '750px' }" [draggable]="false" [resizable]="false" styleClass="p-fluid">
+<p-dialog [header]="productoSeleccionado ? 'Editar Producto' : 'Registrar Producto'"
+          [(visible)]="modalVisible"
+          [modal]="true"
+          [style]="{ width: '750px' }"
+          [draggable]="false"
+          [resizable]="false"
+          styleClass="p-fluid">
 
-  <form [formGroup]="productoForm" (ngSubmit)="guardar()" class="mt-4">
-
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-      <div class="flex flex-col gap-1 md:col-span-1">
-        <label class="font-medium text-gray-700 text-sm">Código SKU <span class="text-red-500">*</span></label>
-        <input pInputText formControlName="codigoSku" autocomplete="off" class="uppercase" placeholder="Ej. LAP-HP-001"/>
-        <small class="text-red-500" *ngIf="productoForm.get('codigoSku')?.invalid && productoForm.get('codigoSku')?.touched">
-          El código es obligatorio y único.
-        </small>
-      </div>
-
-      <div class="flex flex-col gap-1 md:col-span-1">
-        <label class="font-medium text-gray-700 text-sm">Categoría <span class="text-red-500">*</span></label>
-        <p-select formControlName="idCategoria" [options]="opcionesCategoria" optionLabel="nombre" optionValue="id"
-                  placeholder="Seleccione" [appendTo]="'body'"></p-select>
-      </div>
-
-      <div class="flex flex-col gap-1 md:col-span-1">
-        <label class="font-medium text-gray-700 text-sm">Marca <span class="text-red-500">*</span></label>
-        <p-select formControlName="idMarca" [options]="opcionesMarca" optionLabel="nombre" optionValue="id"
-                  placeholder="Seleccione" [appendTo]="'body'"></p-select>
-      </div>
-    </div>
-
-    <div class="flex flex-col gap-1 mb-4">
-      <label class="font-medium text-gray-700 text-sm">Descripción del Producto <span class="text-red-500">*</span></label>
-      <input pInputText formControlName="descripcion" autocomplete="off" placeholder="Ej. Laptop HP Pavilion 15.6'' Ryzen 5 16GB RAM" />
-      <small class="text-red-500" *ngIf="productoForm.get('descripcion')?.invalid && productoForm.get('descripcion')?.touched">
-        La descripción es obligatoria.
-      </small>
-    </div>
-
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-      <div class="flex flex-col gap-1 md:col-span-3 justify-center">
-        <label class="font-medium text-gray-700 text-sm">URL de la Imagen (Opcional)</label>
-        <span class="relative inline-block w-full">
-          <i class="pi pi-link absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 z-10"></i>
-          <input pInputText formControlName="imagenUrl" autocomplete="off" placeholder="https://ejemplo.com/imagen.jpg" class="!pl-10 w-full" />
-        </span>
-        <small class="text-gray-500 text-xs">Pegue el link directo a la fotografía del producto.</small>
-      </div>
-
-      <div class="md:col-span-1 flex justify-center items-center">
-        <div class="w-16 h-16 bg-gray-50 border border-gray-200 rounded-lg overflow-hidden flex justify-center items-center shadow-inner relative">
-          <img *ngIf="productoForm.get('imagenUrl')?.value" [src]="productoForm.get('imagenUrl')?.value" alt="Preview"
-               class="w-full h-full object-cover" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" />
-          <i *ngIf="!productoForm.get('imagenUrl')?.value" class="pi pi-camera text-gray-300 text-2xl" style="display: block;"></i>
-          <i class="pi pi-image text-gray-300 text-2xl absolute" style="display: none;"></i>
-        </div>
-      </div>
-    </div>
-
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
-      <div class="flex flex-col gap-1">
-        <label class="font-medium text-gray-700 text-sm">Precio (USD) <span class="text-red-500">*</span></label>
-        <p-inputNumber formControlName="precioUsd" mode="currency" currency="USD" locale="en-US"
-                       placeholder="$ 0.00"></p-inputNumber>
-      </div>
-
-      <div class="flex flex-col gap-1">
-        <label class="font-medium text-gray-700 text-sm">U. de Medida <span class="text-red-500">*</span></label>
-        <p-select formControlName="idUnidadMedida" [options]="opcionesUM" optionLabel="descripcion" optionValue="id"
-                  placeholder="Und / Mts / Caja" [appendTo]="'body'"></p-select>
-      </div>
-
-      <div class="flex flex-col gap-1">
-        <label class="font-medium text-gray-700 text-sm">Meses de Garantía <span class="text-red-500">*</span></label>
-        <p-inputNumber formControlName="mesesGarantia" [min]="0" [showButtons]="true" suffix=" meses"></p-inputNumber>
-      </div>
-    </div>
-
-    <div class="p-4 bg-blue-50 border border-blue-100 rounded-lg flex items-center justify-between mb-2 transition-opacity"
-         [ngClass]="{'opacity-50 pointer-events-none': modoEdicion}">
-      <div class="flex flex-col">
-        <span class="font-bold text-blue-900">Control por Número de Serie (Item Serial)</span>
-        <span class="text-xs text-blue-700">
-          {{ modoEdicion ? 'La naturaleza del stock no se puede cambiar una vez registrado el producto.' : 'Active esto si el producto requiere registrar N° de Serie (Ej. Laptops, Monitores).' }}
-        </span>
-      </div>
-      <div class="ml-4">
-        <p-checkbox formControlName="esSerializado" [binary]="true"></p-checkbox>
-      </div>
-    </div>
-
-  </form>
-
-  <ng-template pTemplate="footer">
-    <div class="flex justify-end gap-2 mt-4">
-      <p-button label="Cancelar" icon="pi pi-times" styleClass="p-button-text p-button-secondary" (click)="cerrarModal()" [disabled]="guardando"></p-button>
-      <p-button [label]="modoEdicion ? 'Actualizar' : 'Guardar Producto'" icon="pi pi-check" styleClass="p-button-primary" (click)="guardar()" [loading]="guardando"></p-button>
-    </div>
-  </ng-template>
+  <app-producto-form
+    *ngIf="modalVisible"
+    [productoAEditar]="productoSeleccionado"
+    [opcionesCategoria]="opcionesCategoria"
+    [opcionesMarca]="opcionesMarca"
+    [opcionesUM]="opcionesUM"
+    (onGuardado)="alGuardarProducto($event)"
+    (onCancelar)="modalVisible = false">
+  </app-producto-form>
 
 </p-dialog>
 

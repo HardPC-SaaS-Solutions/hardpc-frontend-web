@@ -1,6 +1,9 @@
 import { Component, inject, OnInit, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, FormsModule } from '@angular/forms';
+import { FormsModule } from '@angular/forms';
+
+// ✨ IMPORTAMOS EL NUEVO COMPONENTE FORMULARIO
+import { ProductoFormComponent } from '../producto-form/producto-form.component';
 
 import { ProductoService } from '../../services/producto.service';
 import { CategoriaService } from '../../../maestros/services/categoria.service';
@@ -15,27 +18,26 @@ import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
 import { DialogModule } from 'primeng/dialog';
 import { InputTextModule } from 'primeng/inputtext';
-import { InputNumberModule } from 'primeng/inputnumber';
 import { SelectModule } from 'primeng/select';
 import { ToastModule } from 'primeng/toast';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { TooltipModule } from 'primeng/tooltip';
-import { CheckboxModule } from 'primeng/checkbox';
 import { MessageService, ConfirmationService } from 'primeng/api';
 
 /**
  * @description Componente central para la gestión del catálogo de Productos.
- * Motor principal del sistema de administración y ventas de Anta Salón Spa y Barbería.
- * Soporta filtros dinámicos cruzados, control de inventario serializado vs granel,
- * exportación atómica de datos y seguridad basada en roles (RBAC).
+ * Actúa como "Smart Component" (Contenedor) orquestando la visualización de la grilla,
+ * paginación asíncrona, filtros cruzados avanzados y exportación de datos.
+ * Delega toda la lógica transaccional de creación y edición a su componente hijo (`ProductoFormComponent`).
  */
 @Component({
   selector: 'app-producto-list',
   standalone: true,
   imports: [
-    CommonModule, ReactiveFormsModule, FormsModule, TableModule, ButtonModule,
-    TagModule, DialogModule, InputTextModule, InputNumberModule, SelectModule,
-    ToastModule, ConfirmDialogModule, TooltipModule, CheckboxModule
+    CommonModule, FormsModule, TableModule, ButtonModule,
+    TagModule, DialogModule, InputTextModule, SelectModule,
+    ToastModule, ConfirmDialogModule, TooltipModule,
+    ProductoFormComponent // ✨ INYECTAMOS EL HIJO AQUÍ
   ],
   providers: [MessageService, ConfirmationService],
   templateUrl: './producto-list.component.html'
@@ -45,26 +47,25 @@ export class ProductoListComponent implements OnInit {
   /** Referencia nativa a la tabla PrimeNG para gestionar programáticamente su ciclo de vida y paginación. */
   @ViewChild('dt') dt!: Table;
 
-  // Inyección de dependencias de servicios y catálogos maestros
+  // --- INYECCIÓN DE DEPENDENCIAS ---
   private productoService = inject(ProductoService);
   private categoriaService = inject(CategoriaService);
   private marcaService = inject(MarcaService);
   private umService = inject(UnidadMedidaService);
   private authService = inject(AuthService);
-  private fb = inject(FormBuilder);
   private messageService = inject(MessageService);
   private confirmationService = inject(ConfirmationService);
 
-  // --- TABLA Y DATOS ---
+  // --- ESTADO DE LA TABLA Y DATOS ---
   /** Colección de productos actuales renderizados en la tabla. */
   productos: ProductoDTO[] = [];
 
-  /** Colecciones dinámicas para poblar los selectores del formulario y los filtros. */
+  /** Colecciones maestras cargadas en memoria para inyectar hacia el componente hijo y poblar filtros. */
   opcionesCategoria: any[] = [];
   opcionesMarca: any[] = [];
   opcionesUM: any[] = [];
 
-  /** Opciones estáticas para el filtro de naturaleza del stock. */
+  /** Diccionario visual para segmentar la búsqueda por la naturaleza del inventario. */
   opcionesFiltroTipo = [
     { label: 'Ítem Serializado (Único)', value: true },
     { label: 'Stock General (A granel)', value: false }
@@ -72,7 +73,7 @@ export class ProductoListComponent implements OnInit {
 
   /** Total de registros consolidados en la base de datos para el cálculo de páginas. */
   totalRecords: number = 0;
-  /** Indicador de carga visual para la tabla de PrimeNG. */
+  /** Indicador de carga visual asíncrona para la grilla. */
   loading: boolean = true;
   /** Cantidad de registros renderizados por página. */
   rowsPerPage: number = 10;
@@ -85,53 +86,27 @@ export class ProductoListComponent implements OnInit {
   /** Almacena el ID de la marca seleccionada en el filtro superior. */
   filtroMarca: number | null = null;
 
-  // --- FORMULARIO Y MODAL ---
-  /** Instancia del formulario reactivo para la captura y validación de datos del producto. */
-  productoForm!: FormGroup;
-  /** Determina la visibilidad en pantalla de la ventana modal. */
+  // --- ESTADO DEL MODAL Y COMUNICACIÓN CON EL HIJO ---
+  /** Controla la visibilidad de la ventana modal que envuelve al componente hijo. */
   modalVisible: boolean = false;
-  /** Define el contexto operativo del modal: `true` para Edición, `false` para Creación. */
-  modoEdicion: boolean = false;
-  /** Almacena el ID del registro en tránsito durante la edición. */
-  idActual: number | null = null;
-  /** Bloquea la interfaz de guardado temporalmente para impedir colisiones o dobles envíos. */
-  guardando: boolean = false;
+  /** Payload inyectado hacia el hijo mediante `@Input()`. Define si es Creación (null) o Edición (Objeto). */
+  productoSeleccionado: ProductoDTO | null = null;
 
-  // --- ESTADO DE PERMISOS ---
-  /** Bandera de seguridad (RBAC) que habilita acciones estructurales solo para roles elevados. */
+  /** Control de RBAC: Determina si el usuario actual tiene privilegios para gestionar el catálogo. */
   puedeGestionar: boolean = false;
 
   /**
-   * @description Inicializa el ciclo de vida del componente, verificando los privilegios
-   * del usuario actual antes de construir la estructura del formulario y cargar catálogos.
+   * @description Inicializa el componente validando los permisos de seguridad y pre-cargando
+   * los catálogos maestros que serán compartidos con el formulario hijo.
    */
   ngOnInit(): void {
     this.puedeGestionar = this.authService.esAdminOSupervisor();
-    this.inicializarFormulario();
     this.cargarCombos();
   }
 
   /**
-   * @description Construye el árbol del formulario reactivo aplicando reglas de negocio formales,
-   * garantizando valores por defecto seguros (ej. 12 meses de garantía base).
-   */
-  private inicializarFormulario(): void {
-    this.productoForm = this.fb.group({
-      codigoSku: ['', [Validators.required, Validators.maxLength(50)]],
-      descripcion: ['', [Validators.required, Validators.maxLength(255)]],
-      precioUsd: [null, [Validators.required, Validators.min(0.01)]],
-      mesesGarantia: [12, [Validators.required, Validators.min(0)]],
-      esSerializado: [false, Validators.required],
-      idMarca: [null, Validators.required],
-      idCategoria: [null, Validators.required],
-      idUnidadMedida: [null, Validators.required],
-      imagenUrl: ['', Validators.maxLength(255)]
-    });
-  }
-
-  /**
-   * @description Ejecuta de forma paralela la obtención de todos los catálogos maestros
-   * requeridos para gestionar las relaciones del producto.
+   * @description Ejecuta de forma paralela la obtención de los catálogos requeridos
+   * para el motor de filtros de la grilla y los selectores del formulario.
    */
   private cargarCombos(): void {
     this.categoriaService.listarParaCombo().subscribe(res => this.opcionesCategoria = res);
@@ -139,10 +114,14 @@ export class ProductoListComponent implements OnInit {
     this.umService.listarParaCombo().subscribe(res => this.opcionesUM = res);
   }
 
+  // ======================================================================
+  // --- LÓGICA DE CARGA PAGINADA (LAZY) ---
+  // ======================================================================
+
   /**
-   * @description Solicita a la API el listado paginado de productos inyectando dinámicamente
-   * los parámetros del motor de filtros cruzados.
-   * @param event Objeto portador de los metadatos de paginación y text-search dictados por la tabla.
+   * @description Solicita al servidor el bloque de productos inyectando dinámicamente
+   * los parámetros del motor de filtros cruzados y la paginación de PrimeNG.
+   * @param event Objeto portador de los metadatos de la tabla.
    */
   cargarProductos(event: any): void {
     this.loading = true;
@@ -152,12 +131,7 @@ export class ProductoListComponent implements OnInit {
     const buscar = event.globalFilter || '';
 
     this.productoService.listarPaginado(
-      page,
-      rows,
-      buscar,
-      this.filtroSerializado,
-      this.filtroCategoria,
-      this.filtroMarca
+      page, rows, buscar, this.filtroSerializado, this.filtroCategoria, this.filtroMarca
     ).subscribe({
       next: (res) => {
         this.productos = res.content;
@@ -172,8 +146,8 @@ export class ProductoListComponent implements OnInit {
   }
 
   /**
-   * @description Aplica los filtros cruzados seleccionados en la cabecera.
-   * Reinicia la paginación a la vista inicial (Página 1) delegando la recarga a la API de PrimeNG.
+   * @description Fuerza a la tabla a regresar a su estado base (Página 1),
+   * lo cual dispara automáticamente el ciclo de recarga (`onLazyLoad`) con los filtros actuales.
    */
   aplicarFiltros(): void {
     if (this.dt) {
@@ -181,10 +155,13 @@ export class ProductoListComponent implements OnInit {
     }
   }
 
+  // ======================================================================
+  // --- MÉTODOS DE EXPORTACIÓN ---
+  // ======================================================================
+
   /**
-   * @description Transforma la vista de datos activa en un archivo CSV formateado y atómico.
-   * Asegura la legibilidad traduciendo booleanos de base de datos a jerga de negocio
-   * (ej. "Item Serializado" vs "Stock General").
+   * @description Transforma la vista de datos activa en un archivo CSV formateado.
+   * Traduce las propiedades booleanas internas a jerga de negocio comprensible para los usuarios.
    */
   exportarDatos(): void {
     if (!this.productos || this.productos.length === 0) {
@@ -203,15 +180,8 @@ export class ProductoListComponent implements OnInit {
       const estado = p.estado ? 'Activo' : 'Inactivo';
 
       return [
-        p.codigoSku,
-        p.nombreCategoria || '',
-        p.nombreMarca || '',
-        p.descripcion,
-        p.precioUsd,
-        p.mesesGarantia,
-        p.descripcionUnidadMedida || '',
-        controlStock,
-        estado
+        p.codigoSku, p.nombreCategoria || '', p.nombreMarca || '', p.descripcion,
+        p.precioUsd, p.mesesGarantia, p.descripcionUnidadMedida || '', controlStock, estado
       ];
     });
 
@@ -220,6 +190,7 @@ export class ProductoListComponent implements OnInit {
       ...filas.map(fila => fila.map(campo => `"${campo}"`).join(','))
     ].join('\n');
 
+    // Inyección de Byte Order Mark (BOM) para correcta interpretación de caracteres especiales en MS Excel
     const blob = new Blob(['\ufeff' + contenidoCSV], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -231,67 +202,47 @@ export class ProductoListComponent implements OnInit {
     this.messageService.add({ severity: 'success', summary: 'Exportación', detail: 'Catálogo exportado exitosamente' });
   }
 
+  // ======================================================================
+  // --- GESTIÓN DE FLUJOS HACIA EL FORMULARIO HIJO ---
+  // ======================================================================
+
   /**
-   * @description Acondiciona y despliega el formulario modal para el ingreso de un nuevo registro.
-   * Garantiza que los controles inmutables (SKU, esSerializado) estén habilitados al momento de crear.
+   * @description Prepara el entorno para registrar un nuevo producto en el catálogo.
    */
   abrirModalNuevo(): void {
-    this.modoEdicion = false;
-    this.idActual = null;
-    this.guardando = false;
-    this.productoForm.reset({
-      mesesGarantia: 12,
-      esSerializado: false
-    });
-    this.productoForm.get('codigoSku')?.enable();
-    this.productoForm.get('esSerializado')?.enable();
+    this.productoSeleccionado = null;
     this.modalVisible = true;
   }
 
   /**
-   * @description Despliega el formulario modal en formato de edición poblándolo con los datos del DTO.
-   * Aplica la regla arquitectónica de inmutabilidad: El SKU y la naturaleza de seguimiento (esSerializado)
-   * son de solo lectura una vez que el producto ya ha generado historial en el sistema.
-   * @param item Instancia DTO del producto seleccionado.
+   * @description Prepara el entorno para editar las propiedades de un producto.
+   * Inyecta el DTO seleccionado hacia el componente hijo.
+   * @param item Instancia DTO del producto a editar.
    */
   abrirModalEditar(item: ProductoDTO): void {
-    this.modoEdicion = true;
-    this.idActual = item.id!;
-    this.guardando = false;
-
-    this.productoForm.patchValue({
-      codigoSku: item.codigoSku,
-      descripcion: item.descripcion,
-      precioUsd: item.precioUsd,
-      mesesGarantia: item.mesesGarantia,
-      esSerializado: item.esSerializado,
-      idMarca: item.idMarca,
-      idCategoria: item.idCategoria,
-      idUnidadMedida: item.idUnidadMedida,
-      imagenUrl: item.imagenUrl
-    });
-
-    // Bloqueo de propiedades fundamentales de inventario
-    this.productoForm.get('codigoSku')?.disable();
-    this.productoForm.get('esSerializado')?.disable();
+    this.productoSeleccionado = item;
     this.modalVisible = true;
   }
 
   /**
-   * @description Oculta la ventana modal abortando toda operación en curso sin guardar cambios.
+   * @description Manejador del evento `@Output()` emitido por `ProductoFormComponent` tras una transacción exitosa.
+   * Cierra el modal y sincroniza la grilla con el estado actual del backend.
+   * @param productoActualizado DTO devuelto por el hijo con los datos consolidados.
    */
-  cerrarModal(): void {
+  alGuardarProducto(productoActualizado: ProductoDTO): void {
     this.modalVisible = false;
+    this.cargarProductos(this.dt.createLazyLoadMetadata());
+    this.messageService.add({ severity: 'success', summary: 'Operación Exitosa', detail: `El catálogo se ha actualizado correctamente.` });
   }
 
+  // ======================================================================
+  // --- OPERACIONES DE LISTA (Destructivas / Transiciones de Estado) ---
+  // ======================================================================
+
   /**
-   * @description Motor unificado de excepciones de alta fidelidad. Intercepta los errores
-   * del backend y los traduce a mensajes amigables. Desglosa de forma precisa los errores
-   * arrojados por el DTO `FieldErrorDTO` de Spring Boot para optimizar el feedback al usuario.
-   * @param err Objeto encapsulador del error HTTP.
+   * @description Motor de traducción de excepciones de red, mapeado a la estructura `ApiErrorResponse`.
    */
   private manejarErrorBackend(err: any): void {
-    this.guardando = false;
     console.error('Error capturado del backend:', err);
 
     let titulo = 'Error del Servidor';
@@ -308,7 +259,6 @@ export class ProductoListComponent implements OnInit {
 
       if (err.status === 409 || err.status === 400 || err.status === 404) severidad = 'warn';
 
-      // Extracción atómica de validaciones específicas enviadas por la API
       if (err.error.detalles && Array.isArray(err.error.detalles) && err.error.detalles.length > 0) {
         const erroresCampos = err.error.detalles.map((d: any) => `${d.campo}: ${d.mensaje}`).join(' | ');
         mensaje = `${mensaje} -> ${erroresCampos}`;
@@ -320,53 +270,13 @@ export class ProductoListComponent implements OnInit {
       mensaje = 'No tienes los permisos necesarios para esta acción.';
     }
 
-    this.messageService.add({ severity: severidad, summary: titulo, detail: mensaje, life: 6000 });
+    this.messageService.add({ severity: severidad as any, summary: titulo, detail: mensaje, life: 6000 });
   }
 
   /**
-   * @description Procesa y despacha la transacción del formulario (POST o PUT).
-   * Contiene mecanismos de extracción en bruto (`getRawValue`) para recuperar los campos deshabilitados
-   * y salvaguardas (guardando) para anular envíos múltiples involuntarios.
-   */
-  guardar(): void {
-    if (this.productoForm.invalid) {
-      this.productoForm.markAllAsTouched();
-      this.messageService.add({ severity: 'warn', summary: 'Formulario Incompleto', detail: 'Revise los campos marcados en rojo.' });
-      return;
-    }
-
-    this.guardando = true;
-    const formValues = this.productoForm.getRawValue();
-
-    if (this.modoEdicion && this.idActual) {
-      const existente = this.productos.find(x => x.id === this.idActual);
-      const data: ProductoDTO = { ...formValues, estado: existente?.estado };
-
-      this.productoService.actualizar(this.idActual, data).subscribe({
-        next: () => {
-          this.cerrarModal();
-          this.cargarProductos(this.dt.createLazyLoadMetadata());
-          this.messageService.add({ severity: 'success', summary: 'Actualizado', detail: 'Producto modificado' });
-        },
-        error: (err) => this.manejarErrorBackend(err)
-      });
-    } else {
-      const data: ProductoDTO = { ...formValues, estado: true };
-      this.productoService.crear(data).subscribe({
-        next: () => {
-          this.cerrarModal();
-          this.dt.reset();
-          this.messageService.add({ severity: 'success', summary: 'Creado', detail: 'Producto registrado en el catálogo' });
-        },
-        error: (err) => this.manejarErrorBackend(err)
-      });
-    }
-  }
-
-  /**
-   * @description Exige confirmación para desactivar lógicamente a un producto.
-   * Evita su futura asociación a compras o ventas sin destruir el historial previo.
-   * @param item Producto a retirar del catálogo activo.
+   * @description Exige confirmación para desactivar lógicamente un producto del sistema.
+   * Evita su futura asociación a compras o ventas sin alterar la integridad del historial previo.
+   * @param item Producto a inhabilitar.
    */
   eliminar(item: ProductoDTO): void {
     this.confirmationService.confirm({
@@ -389,8 +299,7 @@ export class ProductoListComponent implements OnInit {
   }
 
   /**
-   * @description Exige confirmación para restaurar la vigencia de un producto inactivo.
-   * Invoca internamente al endpoint ligero de tipo PATCH.
+   * @description Exige confirmación para restaurar la vigencia comercial de un producto inactivo.
    * @param item Producto a rehabilitar.
    */
   restaurar(item: ProductoDTO): void {
