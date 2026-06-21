@@ -6,7 +6,6 @@ import { RouterModule, Router } from '@angular/router';
 import { IngresoCompraService } from '../../services/ingreso-compra.service';
 import { LocalService } from '../../../maestros/services/local.service';
 import { AuthService } from '../../../auth/services/auth.service';
-// Ajusta esta ruta según dónde tengas tu servicio de proveedor
 import { ProveedorService } from '../../services/proveedor.service';
 
 import { IngresoCompraResponseDTO, EstadoIngreso } from '../../../../core/models/ingreso-compra-response.dto';
@@ -25,7 +24,7 @@ import { MessageService, ConfirmationService } from 'primeng/api';
 
 /**
  * @description Componente central para la auditoría y listado de Compras/Ingresos a Almacén.
- * Provee una vista paginada con filtros cruzados avanzados (fechas, locales, proveedores)
+ * Provee una vista paginada con filtros cruzados avanzados (fechas, locales, proveedores, estado, comprobante)
  * y actúa como punto de partida tanto para registrar nuevas compras como para anular transacciones.
  */
 @Component({
@@ -77,6 +76,16 @@ export class IngresoListComponent implements OnInit {
   filtroIdLocal: number | null = null;
   /** Identificador del proveedor seleccionado en los filtros. */
   filtroIdProveedor: number | null = null;
+  /** Filtro por el estado lógico del ciclo de vida de la transacción. */
+  filtroEstado: string | null = null;
+  /** Cadena de búsqueda exacta o parcial para ubicar facturas/boletas específicas. */
+  filtroComprobante: string = '';
+
+  /** Diccionario visual para el selector de estado de transacciones. */
+  opcionesEstado = [
+    { label: 'Registrado', value: EstadoIngreso.REGISTRADO },
+    { label: 'Anulado', value: EstadoIngreso.ANULADO }
+  ];
 
   // --- ESTADOS DEL MODAL DE DETALLE ---
   /** Controla la visibilidad del modal de inspección detallada. */
@@ -117,7 +126,7 @@ export class IngresoListComponent implements OnInit {
 
   /**
    * @description Solicita al servidor el bloque de transacciones de compra correspondientes,
-   * empaquetando e inyectando todos los criterios del filtro cruzado.
+   * empaquetando e inyectando todos los criterios del filtro cruzado actualizados.
    * @param event Objeto contenedor de metadatos de paginación emitido por PrimeNG.
    */
   cargarIngresos(event: any): void {
@@ -130,7 +139,9 @@ export class IngresoListComponent implements OnInit {
     const fechaFinFormateada = this.filtroFechaFin ? `${this.filtroFechaFin}T23:59:59` : null;
 
     this.ingresoService.listarPaginadoAvanzado(
-      page, size, fechaIniFormateada, fechaFinFormateada, this.filtroIdProveedor, this.filtroIdLocal
+      page, size, fechaIniFormateada, fechaFinFormateada,
+      this.filtroIdProveedor, this.filtroIdLocal,
+      this.filtroEstado, this.filtroComprobante
     ).subscribe({
       next: (res) => {
         this.ingresos = res.content;
@@ -163,6 +174,9 @@ export class IngresoListComponent implements OnInit {
     this.filtroFechaFin = null;
     this.filtroIdLocal = null;
     this.filtroIdProveedor = null;
+    this.filtroEstado = null;
+    this.filtroComprobante = '';
+
     this.aplicarFiltros();
   }
 

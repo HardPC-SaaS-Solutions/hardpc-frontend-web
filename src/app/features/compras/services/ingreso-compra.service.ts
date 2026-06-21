@@ -55,6 +55,8 @@ export class IngresoCompraService {
    * @param fechaFin Límite superior cronológico (Formato ISO 8601, Ej: 2026-06-30T23:59:59).
    * @param idProveedor ID opcional del proveedor comercial a auditar.
    * @param idLocal ID opcional del local destino que recibió la mercadería.
+   * @param estado Filtro opcional por la situación lógica de la transacción (Ej: 'REGISTRADO', 'ANULADO').
+   * @param comprobante Filtro opcional de texto exacto o parcial para buscar por serie/número de boleta o factura.
    * @returns Observable con la respuesta paginada y filtrada.
    */
   listarPaginadoAvanzado(
@@ -63,7 +65,9 @@ export class IngresoCompraService {
     fechaInicio?: string | null,
     fechaFin?: string | null,
     idProveedor?: number | null,
-    idLocal?: number | null
+    idLocal?: number | null,
+    estado?: string | null,
+    comprobante?: string | null
   ): Observable<PageResponseDTO<IngresoCompraResponseDTO>> {
 
     let params = new HttpParams()
@@ -74,6 +78,8 @@ export class IngresoCompraService {
     if (fechaFin) params = params.set('fechaFin', fechaFin);
     if (idProveedor) params = params.set('idProveedor', idProveedor.toString());
     if (idLocal) params = params.set('idLocal', idLocal.toString());
+    if (estado) params = params.set('estado', estado);
+    if (comprobante && comprobante.trim() !== '') params = params.set('comprobante', comprobante.trim());
 
     return this.http.get<PageResponseDTO<IngresoCompraResponseDTO>>(this.URL, { params });
   }

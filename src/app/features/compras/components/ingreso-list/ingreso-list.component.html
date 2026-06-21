@@ -35,6 +35,20 @@
                 placeholder="Todas las sucursales" [showClear]="true" styleClass="w-full text-sm"></p-select>
     </div>
 
+    <div class="flex flex-col gap-1.5 flex-1 min-w-[150px]">
+      <label class="text-xs font-bold text-gray-500 uppercase tracking-wide">Estado</label>
+      <p-select [options]="opcionesEstado" [(ngModel)]="filtroEstado" optionLabel="label" optionValue="value"
+                placeholder="Todos" [showClear]="true" styleClass="w-full text-sm"></p-select>
+    </div>
+
+    <div class="flex flex-col gap-1.5 flex-1 min-w-[200px]">
+      <label class="text-xs font-bold text-gray-500 uppercase tracking-wide">Comprobante</label>
+      <span class="p-input-icon-left w-full relative inline-block">
+        <i class="pi pi-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 z-10"></i>
+        <input type="text" pInputText [(ngModel)]="filtroComprobante" placeholder="Ej. F001 o 104" class="w-full text-sm !pl-10" />
+      </span>
+    </div>
+
     <div class="flex gap-2">
       <p-button icon="pi pi-search" label="Filtrar" styleClass="p-button-secondary shadow-md" (click)="aplicarFiltros()"></p-button>
       <p-button icon="pi pi-filter-slash" pTooltip="Limpiar filtros" styleClass="p-button-outlined p-button-secondary" (click)="limpiarFiltros()"></p-button>
