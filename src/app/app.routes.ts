@@ -27,6 +27,7 @@ import { AlmacenDashboardComponent } from './features/inventario/components/alma
 
 // Componentes del Módulo de Compras
 import { IngresoListComponent } from './features/compras/components/ingreso-list/ingreso-list.component';
+import { IngresoFormComponent } from './features/compras/components/ingreso-form/ingreso-form.component';
 
 /**
  * @description Configuración principal de enrutamiento para el Sistema Administrativo de HardPC.
@@ -79,7 +80,16 @@ export const routes: Routes = [
       // =======================================================
       // MÓDULO DE COMPRAS Y ABASTECIMIENTO
       // =======================================================
-      { path: 'compras', component: IngresoListComponent }
+      {
+        // Vista de auditoría, listado de comprobantes y anulación transaccional.
+        path: 'compras',
+        component: IngresoListComponent
+      },
+      {
+        // Interfaz transaccional (Maestro-Detalle) para el ingreso de nueva mercadería física.
+        path: 'compras/nuevo',
+        component: IngresoFormComponent
+      }
     ]
   },
   {

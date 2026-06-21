@@ -1,0 +1,262 @@
+<div class="bg-gray-50 min-h-screen pb-10">
+  <div class="bg-white px-6 py-4 shadow-sm border-b border-gray-200 flex justify-between items-center mb-6">
+    <div class="flex items-center gap-3">
+      <p-button icon="pi pi-arrow-left" styleClass="p-button-rounded p-button-text p-button-secondary"
+        (click)="cancelar()"></p-button>
+      <div>
+        <h2 class="text-xl font-bold text-gray-800 leading-tight">Registrar Nueva Compra</h2>
+        <p class="text-xs text-gray-500 font-medium tracking-wide uppercase">Ingreso físico de almacén</p>
+      </div>
+    </div>
+    <div class="flex gap-2">
+      <p-button label="Descartar" styleClass="p-button-text p-button-secondary font-bold" (click)="cancelar()"
+        [disabled]="guardando"></p-button>
+      <p-button label="Procesar Ingreso" icon="pi pi-save" styleClass="p-button-primary shadow-md font-bold"
+        (click)="registrarCompra()" [loading]="guardando"></p-button>
+    </div>
+  </div>
+
+  <div class="max-w-7xl mx-auto px-4 lg:px-8">
+    <form [formGroup]="compraForm" class="grid grid-cols-1 xl:grid-cols-12 gap-6">
+
+      <div class="xl:col-span-8 flex flex-col gap-6">
+
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+          <div
+            class="text-sm font-bold text-gray-800 uppercase tracking-wide border-b border-gray-100 pb-3 mb-5 flex items-center gap-2">
+            <i class="pi pi-file-edit text-blue-500"></i> Datos del Comprobante
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div class="flex flex-col gap-1.5 md:col-span-2">
+              <label class="text-xs font-bold text-gray-600">Proveedor / Mayorista <span
+                  class="text-red-500">*</span></label>
+              <div class="flex gap-2">
+                <p-select formControlName="idProveedor" [options]="proveedores" optionLabel="razonSocial"
+                  optionValue="id" placeholder="Seleccione el proveedor" [filter]="true" filterBy="razonSocial"
+                  styleClass="w-full"></p-select>
+                <p-button icon="pi pi-plus" styleClass="p-button-outlined p-button-primary" pTooltip="Nuevo Proveedor"
+                  tooltipPosition="top" (click)="abrirModalNuevoProveedor()"></p-button>
+              </div>
+            </div>
+
+            <div class="flex flex-col gap-1.5">
+              <label class="text-xs font-bold text-gray-600">Tipo de Documento <span
+                  class="text-red-500">*</span></label>
+              <p-select formControlName="idTipoComprobante" [options]="tiposComprobante" optionLabel="nombre"
+                optionValue="id" styleClass="w-full"></p-select>
+            </div>
+
+            <div class="flex flex-col gap-1.5">
+              <label class="text-xs font-bold text-gray-600">Fecha y Hora de Emisión <span
+                  class="text-red-500">*</span></label>
+              <span class="p-input-icon-left w-full">
+                <input type="datetime-local" pInputText formControlName="fechaIngreso" class="w-full text-sm pl-8" />
+              </span>
+            </div>
+
+            <div class="flex flex-col gap-1.5">
+              <label class="text-xs font-bold text-gray-600">Serie <span class="text-red-500">*</span></label>
+              <input pInputText formControlName="serieComprobante" placeholder="Ej. F001" class="uppercase"
+                maxlength="4" (blur)="formatearSerie()" />
+              <small class="text-red-500"
+                *ngIf="compraForm.get('serieComprobante')?.hasError('pattern') && compraForm.get('serieComprobante')?.touched">Debe
+                tener 4 caracteres alfanuméricos.</small>
+            </div>
+
+            <div class="flex flex-col gap-1.5">
+              <label class="text-xs font-bold text-gray-600">Correlativo <span class="text-red-500">*</span></label>
+              <input pInputText formControlName="numeroComprobante" placeholder="Ej. 00000104" maxlength="8"
+                (blur)="formatearCorrelativo()" />
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-white p-0 rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div class="bg-gray-800 px-6 py-4 flex justify-between items-center">
+            <div class="text-sm font-bold text-white uppercase tracking-wide flex items-center gap-2">
+              <i class="pi pi-box text-blue-400"></i> Detalle de Mercadería
+            </div>
+
+            <div class="flex gap-2 w-80"> <p-autoComplete [(ngModel)]="productoSeleccionado"
+                [ngModelOptions]="{standalone: true}" [suggestions]="productosFiltrados"
+                (completeMethod)="buscarProductoCombo($event)" field="descripcion"
+                placeholder="Buscar por SKU o Nombre..." (onSelect)="agregarProductoAlDetalle()" styleClass="w-full"
+                inputStyleClass="w-full text-sm" appendTo="body">
+                <ng-template let-prod pTemplate="item">
+                  <div class="flex flex-col">
+                    <span class="font-bold text-xs">{{ prod.codigoSku }}</span>
+                    <span class="text-sm">{{ prod.descripcion }}</span>
+                  </div>
+                </ng-template>
+              </p-autoComplete>
+              <p-button icon="pi pi-plus" styleClass="p-button-success" pTooltip="Nuevo Producto" tooltipPosition="left"
+                (click)="abrirModalNuevoProducto()"></p-button>
+            </div>
+          </div>
+
+          <div class="p-0">
+            <p-table [value]="detalles.controls" styleClass="p-datatable-sm p-datatable-striped">
+              <ng-template pTemplate="header">
+                <tr>
+                  <th class="w-16 text-center">Acción</th>
+                  <th>SKU / Producto</th>
+                  <th class="w-32 text-center">Cant.</th>
+                  <th class="w-36 text-right">P. Unitario</th>
+                  <th class="w-36 text-right">Subtotal</th>
+                </tr>
+              </ng-template>
+
+              <ng-template pTemplate="body" let-fila let-i="rowIndex">
+                <tr [formGroup]="fila">
+                  <td class="text-center">
+                    <p-button icon="pi pi-trash" styleClass="p-button-rounded p-button-text p-button-danger p-button-sm"
+                      (click)="eliminarFila(i)"></p-button>
+                  </td>
+                  <td>
+                    <div class="flex flex-col gap-1">
+                      <span class="font-mono font-bold text-xs text-gray-500">{{ fila.get('codigoSku')?.value }}</span>
+                      <span class="text-sm font-semibold text-gray-800 leading-tight">{{ fila.get('descripcion')?.value
+                        }}</span>
+
+                      <div *ngIf="fila.get('esSerializado')?.value" class="mt-1">
+                        <p-button
+                          [label]="fila.get('numerosSerie')?.value.length === fila.get('cantidad')?.value ? 'Series Registradas (' + fila.get('cantidad')?.value + ')' : 'Escanear Series Faltantes'"
+                          [icon]="fila.get('numerosSerie')?.value.length === fila.get('cantidad')?.value ? 'pi pi-check-circle' : 'pi pi-barcode'"
+                          [styleClass]="fila.get('numerosSerie')?.value.length === fila.get('cantidad')?.value ? 'p-button-sm p-button-success p-button-text p-0 text-xs' : 'p-button-sm p-button-warning p-button-text p-0 text-xs font-bold'"
+                          (click)="abrirModalSeriales(i)"></p-button>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="text-center">
+                    <p-inputNumber formControlName="cantidad" [showButtons]="true" buttonLayout="horizontal"
+                      inputId="horizontal" spinnerMode="horizontal" [step]="1" [min]="1"
+                      inputStyleClass="w-12 text-center font-bold"></p-inputNumber>
+                  </td>
+                  <td class="text-right">
+                    <p-inputNumber formControlName="precioCompraUnitario" mode="currency" currency="PEN" locale="es-PE"
+                      inputStyleClass="w-24 text-right"></p-inputNumber>
+                  </td>
+                  <td class="text-right font-bold text-gray-800 bg-gray-50/50">
+                    S/ {{ (fila.get('cantidad')?.value * fila.get('precioCompraUnitario')?.value) | number:'1.2-2' }}
+                  </td>
+                </tr>
+              </ng-template>
+              <ng-template pTemplate="empty">
+                <tr>
+                  <td colspan="5" class="text-center py-10 text-gray-400 font-medium text-sm">
+                    Utiliza el buscador superior para agregar productos a la orden.
+                  </td>
+                </tr>
+              </ng-template>
+            </p-table>
+          </div>
+        </div>
+      </div>
+
+      <div class="xl:col-span-4 flex flex-col gap-6">
+
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+          <div
+            class="text-sm font-bold text-gray-800 uppercase tracking-wide border-b border-gray-100 pb-3 mb-5 flex items-center gap-2">
+            <i class="pi pi-building text-blue-500"></i> Recepción Física
+          </div>
+          <div class="flex flex-col gap-1.5">
+            <label class="text-xs font-bold text-gray-600">Sucursal de Destino <span
+                class="text-red-500">*</span></label>
+            <p-select formControlName="idLocal" [options]="locales" optionLabel="nombre" optionValue="id"
+              styleClass="w-full"></p-select>
+          </div>
+          <div class="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-100 flex items-start gap-3">
+            <i class="pi pi-info-circle text-blue-500 mt-0.5"></i>
+            <p class="text-xs text-blue-800 leading-relaxed">El stock se sumará automáticamente a esta sucursal y se
+              generará la trazabilidad en el Kardex.</p>
+          </div>
+        </div>
+
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 sticky top-6">
+          <div
+            class="text-sm font-bold text-gray-800 uppercase tracking-wide border-b border-gray-100 pb-3 mb-5 flex items-center gap-2">
+            <i class="pi pi-calculator text-blue-500"></i> Resumen de Pago
+          </div>
+
+          <div class="flex flex-col gap-3">
+            <div class="flex justify-between items-center text-sm">
+              <span class="text-gray-500 font-medium">Subtotal Neto</span>
+              <span class="font-bold text-gray-800">S/ {{ subtotalCalculado | number:'1.2-2' }}</span>
+            </div>
+
+            <div class="flex justify-between items-center text-sm">
+              <span class="text-gray-500 font-medium">I.G.V. Manual</span>
+              <p-inputNumber formControlName="impuesto" mode="currency" currency="PEN" locale="es-PE"
+                inputStyleClass="w-24 text-right font-bold text-gray-800 border-gray-300"></p-inputNumber>
+            </div>
+
+            <div class="border-t border-dashed border-gray-300 my-2"></div>
+
+            <div class="flex justify-between items-end">
+              <span class="text-gray-800 font-bold uppercase tracking-widest text-xs mb-1">Total Documento</span>
+              <span class="text-3xl font-black text-green-600 tracking-tighter">S/ {{ totalCalculado | number:'1.2-2'
+                }}</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </form>
+  </div>
+</div>
+
+<p-dialog header="Registro de Series Físicas" [(visible)]="modalSerialesVisible" [modal]="true"
+  [style]="{ width: '450px' }" [draggable]="false" [resizable]="false">
+  <div class="mb-4 text-sm text-gray-600">
+    Por favor, escanee o digite los números de serie exactos para cada unidad del equipo que acaba de ingresar.
+  </div>
+
+  <div class="flex flex-col gap-3 max-h-[50vh] overflow-y-auto px-1 pb-2 custom-scrollbar">
+    <div *ngFor="let serial of serialesTemporales; let i = index" class="flex items-center gap-3">
+      <span class="font-bold text-gray-400 w-6 text-right">#{{ i + 1 }}</span>
+      <span class="p-input-icon-left flex-1">
+        <i class="pi pi-barcode text-blue-400"></i>
+        <input pInputText type="text" [(ngModel)]="serialesTemporales[i]" class="w-full uppercase font-mono text-sm"
+          placeholder="Ej. SN-XXXXXXX" />
+      </span>
+    </div>
+  </div>
+
+  <ng-template pTemplate="footer">
+    <div class="flex justify-end gap-2 mt-4">
+      <p-button label="Cancelar" icon="pi pi-times" styleClass="p-button-text p-button-secondary"
+        (click)="modalSerialesVisible = false"></p-button>
+      <p-button label="Guardar Series" icon="pi pi-check" styleClass="p-button-primary shadow-md"
+        (click)="guardarSeriales()"></p-button>
+    </div>
+  </ng-template>
+</p-dialog>
+
+<p-dialog header="Registrar Nuevo Proveedor" [(visible)]="modalProveedorVisible" [modal]="true"
+  [style]="{ width: '650px' }" [draggable]="false" [resizable]="false" styleClass="p-fluid">
+
+  <app-proveedor-form
+    *ngIf="modalProveedorVisible"
+    (onGuardado)="alGuardarNuevoProveedor($event)"
+    (onCancelar)="modalProveedorVisible = false">
+  </app-proveedor-form>
+
+</p-dialog>
+
+<p-dialog header="Registrar Nuevo Producto" [(visible)]="modalProductoVisible" [modal]="true"
+  [style]="{ width: '750px' }" [draggable]="false" [resizable]="false" styleClass="p-fluid">
+
+  <app-producto-form
+    *ngIf="modalProductoVisible"
+    [opcionesCategoria]="opcionesCategoria"
+    [opcionesMarca]="opcionesMarca"
+    [opcionesUM]="opcionesUM"
+    (onGuardado)="alGuardarNuevoProducto($event)"
+    (onCancelar)="modalProductoVisible = false">
+  </app-producto-form>
+
+</p-dialog>
+
+<p-toast position="top-right"></p-toast>
