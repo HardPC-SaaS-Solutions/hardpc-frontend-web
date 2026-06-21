@@ -1,6 +1,10 @@
 import { Component, inject, OnInit, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, FormsModule } from '@angular/forms';
+import { FormsModule } from '@angular/forms';
+
+// ✨ IMPORTAMOS EL NUEVO COMPONENTE FORMULARIO
+import { ProveedorFormComponent } from '../proveedor-form/proveedor-form.component';
+
 import { ProveedorService } from '../../services/proveedor.service';
 import { AuthService } from '../../../auth/services/auth.service';
 import { ProveedorDTO } from '../../../../core/models/proveedor.dto';
@@ -17,17 +21,18 @@ import { MessageService, ConfirmationService } from 'primeng/api';
 
 /**
  * @description Componente central para la gestión del directorio de Proveedores en HardPC.
- * Administra los socios comerciales encargados del abastecimiento, implementando validaciones
- * estrictas (ej. RUC de 11 dígitos), control de permisos jerárquicos, exportación de datos
- * y un motor de excepciones de alta fidelidad.
+ * Actúa como "Smart Component" (Contenedor) encargado de la visualización de la grilla, paginación,
+ * exportación de datos y ejecución de acciones destructivas. Delega completamente la lógica de
+ * creación y edición a su componente hijo (`ProveedorFormComponent`).
  */
 @Component({
   selector: 'app-proveedor-list',
   standalone: true,
   imports: [
-    CommonModule, ReactiveFormsModule, FormsModule, TableModule, ButtonModule,
+    CommonModule, FormsModule, TableModule, ButtonModule,
     TagModule, DialogModule, InputTextModule,
-    ToastModule, ConfirmDialogModule, TooltipModule
+    ToastModule, ConfirmDialogModule, TooltipModule,
+    ProveedorFormComponent // ✨ INYECTAMOS EL COMPONENTE HIJO AQUÍ
   ],
   providers: [MessageService, ConfirmationService],
   templateUrl: './proveedor-list.component.html'
@@ -37,66 +42,49 @@ export class ProveedorListComponent implements OnInit {
   /** Referencia nativa a la tabla PrimeNG para delegar la gestión del ciclo de vida de la paginación. */
   @ViewChild('dt') dt!: Table;
 
-  // Inyección de dependencias
+  // --- INYECCIÓN DE DEPENDENCIAS ---
+  // Nota: FormBuilder ha sido removido exitosamente al ser delegado al componente hijo.
   private proveedorService = inject(ProveedorService);
   private authService = inject(AuthService);
-  private fb = inject(FormBuilder);
   private messageService = inject(MessageService);
   private confirmationService = inject(ConfirmationService);
 
-  // --- ESTADO DE LA TABLA ---
+  // --- ESTADO DE LA TABLA Y PAGINACIÓN ---
   /** Colección de proveedores actuales renderizados en la vista. */
   proveedores: ProveedorDTO[] = [];
   /** Total de registros consolidados en la base de datos para el cálculo de páginas. */
   totalRecords: number = 0;
-  /** Indicador de carga visual para la tabla de PrimeNG. */
+  /** Indicador de carga visual asíncrona para la tabla de PrimeNG. */
   loading: boolean = true;
   /** Cantidad de registros renderizados por página. */
   rowsPerPage: number = 10;
 
-  // --- ESTADO DEL FORMULARIO Y MODAL ---
-  /** Instancia del formulario reactivo para la captura y validación de datos del proveedor. */
-  proveedorForm!: FormGroup;
-  /** Determina la visibilidad en pantalla de la ventana modal. */
+  // --- ESTADO DEL MODAL Y COMUNICACIÓN CON EL HIJO ---
+  /** Determina la visibilidad en pantalla de la ventana modal que envuelve al componente hijo. */
   modalVisible: boolean = false;
-  /** Define el contexto operativo del modal: `true` para Edición, `false` para Creación. */
-  modoEdicion: boolean = false;
-  /** Almacena el ID del registro en tránsito durante la edición. */
-  idActual: number | null = null;
-  /** Bloquea la interfaz de guardado temporalmente para impedir colisiones o dobles envíos. */
-  guardando: boolean = false;
+  /** * Payload inyectado hacia el componente hijo mediante `@Input()`.
+   * Si es `null`, el hijo entra en modo 'Creación'. Si posee un objeto, entra en modo 'Edición'.
+   */
+  proveedorSeleccionado: ProveedorDTO | null = null;
 
-  // --- ESTADO DE PERMISOS ---
-  /** Bandera de seguridad (RBAC) que habilita acciones destructivas solo para roles elevados. */
+  // --- ESTADO DE PERMISOS (RBAC) ---
+  /** Bandera de seguridad que habilita acciones estructurales solo para roles elevados. */
   puedeGestionar: boolean = false;
 
   /**
-   * @description Inicializa el ciclo de vida del componente, verificando los privilegios
-   * del usuario actual antes de construir la estructura del formulario.
+   * @description Inicializa el ciclo de vida del componente validando los privilegios operativos.
    */
   ngOnInit(): void {
     this.puedeGestionar = this.authService.esAdminOSupervisor();
-    this.inicializarFormulario();
   }
 
-  /**
-   * @description Construye el árbol del formulario reactivo aplicando reglas de negocio formales.
-   * Exige mediante expresiones regulares (Regex) que el RUC conste de exactamente 11 dígitos numéricos.
-   */
-  private inicializarFormulario(): void {
-    this.proveedorForm = this.fb.group({
-      ruc: ['', [Validators.required, Validators.pattern(/^\d{11}$/)]],
-      razonSocial: ['', [Validators.required, Validators.maxLength(150)]],
-      nombreComercial: ['', [Validators.maxLength(150)]],
-      direccion: ['', [Validators.required, Validators.maxLength(255)]],
-      telefono: ['', [Validators.required, Validators.maxLength(20)]],
-      email: ['', [Validators.required, Validators.email, Validators.maxLength(100)]]
-    });
-  }
+  // ======================================================================
+  // --- LÓGICA DE CARGA PAGINADA (LAZY) ---
+  // ======================================================================
 
   /**
    * @description Solicita a la API el listado paginado de proveedores.
-   * @param event Objeto portador de los metadatos de paginación y filtros dictados por la tabla.
+   * @param event Objeto portador de los metadatos de paginación y filtros de texto dictados por la tabla.
    */
   cargarProveedores(event: any): void {
     this.loading = true;
@@ -118,8 +106,12 @@ export class ProveedorListComponent implements OnInit {
     });
   }
 
+  // ======================================================================
+  // --- MÉTODOS DE EXPORTACIÓN ---
+  // ======================================================================
+
   /**
-   * @description Transforma la vista de datos activa en un archivo CSV formateado y atómico,
+   * @description Transforma la vista de datos activa en un archivo CSV formateado,
    * preservando la fidelidad de las celdas mediante encerramiento en comillas.
    */
   exportarDatos(): void {
@@ -158,57 +150,52 @@ export class ProveedorListComponent implements OnInit {
     this.messageService.add({ severity: 'success', summary: 'Exportación', detail: 'Archivo generado con éxito' });
   }
 
+  // ======================================================================
+  // --- GESTIÓN DE FLUJOS HACIA EL FORMULARIO HIJO ---
+  // ======================================================================
+
   /**
-   * @description Acondiciona y despliega el formulario modal para el ingreso de un nuevo registro,
-   * rehabilitando controles previamente bloqueados.
+   * @description Prepara el entorno para registrar un nuevo proveedor.
+   * Al pasar `null`, el componente hijo inicializará un formulario en blanco.
    */
   abrirModalNuevo(): void {
-    this.modoEdicion = false;
-    this.idActual = null;
-    this.guardando = false;
-    this.proveedorForm.reset();
-    this.proveedorForm.get('ruc')?.enable();
+    this.proveedorSeleccionado = null;
     this.modalVisible = true;
   }
 
   /**
-   * @description Despliega el formulario modal en formato de edición poblándolo con los datos del DTO.
-   * Aplica la regla arquitectónica de inmutabilidad: El RUC como llave de negocio legal es de solo lectura.
-   * @param item Instancia DTO del proveedor seleccionado.
+   * @description Prepara el entorno para editar un proveedor existente.
+   * Transfiere el DTO seleccionado hacia el componente hijo para poblar su formulario.
+   * @param item Instancia DTO del proveedor a editar.
    */
   abrirModalEditar(item: ProveedorDTO): void {
-    this.modoEdicion = true;
-    this.idActual = item.id!;
-    this.guardando = false;
-
-    this.proveedorForm.patchValue({
-      ruc: item.ruc,
-      razonSocial: item.razonSocial,
-      nombreComercial: item.nombreComercial,
-      direccion: item.direccion,
-      telefono: item.telefono,
-      email: item.email
-    });
-
-    this.proveedorForm.get('ruc')?.disable();
+    this.proveedorSeleccionado = item;
     this.modalVisible = true;
   }
 
   /**
-   * @description Oculta la ventana modal abortando toda operación en curso sin guardar cambios.
+   * @description Escucha el evento `@Output()` emitido por el componente hijo tras una transacción exitosa.
+   * Oculta el modal, notifica el éxito de la operación y solicita la actualización de la grilla.
+   * @param proveedorActualizado Payload devuelto por el hijo con el registro guardado.
    */
-  cerrarModal(): void {
+  alGuardarProveedor(proveedorActualizado: ProveedorDTO): void {
     this.modalVisible = false;
+    this.cargarProveedores(this.dt.createLazyLoadMetadata());
+    this.messageService.add({
+      severity: 'success',
+      summary: 'Operación Exitosa',
+      detail: `Proveedor ${proveedorActualizado.razonSocial} procesado correctamente.`
+    });
   }
 
+  // ======================================================================
+  // --- OPERACIONES DE LISTA (Destructivas / Transiciones de Estado) ---
+  // ======================================================================
+
   /**
-   * @description Motor unificado de excepciones de alta fidelidad. Intercepta los errores
-   * del backend y los traduce a mensajes amigables con categorización dinámica de UI.
-   * Desglosa de forma precisa los errores arrojados por el DTO `FieldErrorDTO` de Spring Boot.
-   * @param err Objeto encapsulador del error HTTP.
+   * @description Motor de traducción de excepciones de red, mapeado a la estructura `ApiErrorResponse`.
    */
   private manejarErrorBackend(err: any): void {
-    this.guardando = false;
     console.error('Error capturado del backend:', err);
 
     let titulo = 'Error del Servidor';
@@ -227,7 +214,6 @@ export class ProveedorListComponent implements OnInit {
         severidad = 'warn';
       }
 
-      // Extracción atómica de campos y descripciones provistas por el ApiErrorResponse
       if (err.error.detalles && Array.isArray(err.error.detalles) && err.error.detalles.length > 0) {
         const erroresCampos = err.error.detalles.map((d: any) => `${d.campo}: ${d.mensaje}`).join(' | ');
         mensaje = `${mensaje} -> ${erroresCampos}`;
@@ -240,56 +226,16 @@ export class ProveedorListComponent implements OnInit {
     }
 
     this.messageService.add({
-      severity: severidad,
+      severity: severidad as any,
       summary: titulo,
       detail: mensaje,
-      life: 6000 // Se otorgan 6 segundos para permitir la lectura cómoda de las causas
+      life: 6000
     });
   }
 
   /**
-   * @description Procesa y despacha la transacción del formulario (POST o PUT).
-   * Contiene mecanismos de extracción en bruto para tolerar controles deshabilitados
-   * y bloqueos preventivos de UI para anular el doble sometimiento (Double Submit).
-   */
-  guardar(): void {
-    if (this.proveedorForm.invalid) {
-      this.proveedorForm.markAllAsTouched();
-      this.messageService.add({ severity: 'warn', summary: 'Formulario Incompleto', detail: 'Revise los campos en rojo.' });
-      return;
-    }
-
-    this.guardando = true;
-    const formValues = this.proveedorForm.getRawValue();
-
-    if (this.modoEdicion && this.idActual) {
-      const existente = this.proveedores.find(x => x.id === this.idActual);
-      const data: ProveedorDTO = { ...formValues, estado: existente?.estado };
-
-      this.proveedorService.actualizar(this.idActual, data).subscribe({
-        next: () => {
-          this.cerrarModal();
-          this.cargarProveedores(this.dt.createLazyLoadMetadata());
-          this.messageService.add({ severity: 'success', summary: 'Actualizado', detail: 'Proveedor actualizado' });
-        },
-        error: (err) => this.manejarErrorBackend(err)
-      });
-    } else {
-      const data: ProveedorDTO = { ...formValues, estado: true };
-      this.proveedorService.crear(data).subscribe({
-        next: () => {
-          this.cerrarModal();
-          this.dt.reset();
-          this.messageService.add({ severity: 'success', summary: 'Creado', detail: 'Proveedor registrado' });
-        },
-        error: (err) => this.manejarErrorBackend(err)
-      });
-    }
-  }
-
-  /**
    * @description Exige confirmación para desactivar lógicamente a un proveedor del sistema.
-   * Evita su futura asociación a compras sin destruir el historial previo.
+   * Evita su futura asociación a compras sin destruir el historial previo en el Kardex.
    * @param item Proveedor a suspender.
    */
   eliminar(item: ProveedorDTO): void {
@@ -313,8 +259,7 @@ export class ProveedorListComponent implements OnInit {
   }
 
   /**
-   * @description Exige confirmación para restaurar la vigencia de un proveedor inactivo.
-   * Invoca internamente al endpoint ligero de tipo PATCH.
+   * @description Exige confirmación para restaurar la vigencia comercial de un proveedor inactivo.
    * @param item Proveedor a rehabilitar.
    */
   restaurar(item: ProveedorDTO): void {

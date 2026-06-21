@@ -1,0 +1,59 @@
+<form [formGroup]="proveedorForm" (ngSubmit)="guardar()" class="mt-4 styleClass='p-fluid'">
+
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+    <div class="flex flex-col gap-1 md:col-span-2">
+      <label class="font-medium text-gray-700 text-sm">RUC <span class="text-red-500">*</span></label>
+      <input pInputText formControlName="ruc" autocomplete="off" placeholder="11 dígitos" />
+      <small class="text-red-500" *ngIf="proveedorForm.get('ruc')?.invalid && proveedorForm.get('ruc')?.touched">
+        El RUC es obligatorio y debe tener exactamente 11 dígitos numéricos.
+      </small>
+    </div>
+
+    <div class="flex flex-col gap-1 md:col-span-2">
+      <label class="font-medium text-gray-700 text-sm">Razón Social <span class="text-red-500">*</span></label>
+      <input pInputText formControlName="razonSocial" autocomplete="off" placeholder="Ej. Importaciones S.A.C." />
+      <small class="text-red-500" *ngIf="proveedorForm.get('razonSocial')?.invalid && proveedorForm.get('razonSocial')?.touched">
+        La razón social es obligatoria.
+      </small>
+    </div>
+
+    <div class="flex flex-col gap-1 md:col-span-2">
+      <label class="font-medium text-gray-700 text-sm">Nombre Comercial</label>
+      <input pInputText formControlName="nombreComercial" autocomplete="off" placeholder="(Opcional)" />
+    </div>
+  </div>
+
+  <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3 border-b pb-1">Datos de Contacto</h3>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+    <div class="flex flex-col gap-1">
+      <label class="font-medium text-gray-700 text-sm">Teléfono <span class="text-red-500">*</span></label>
+      <input pInputText formControlName="telefono" autocomplete="off" />
+      <small class="text-red-500" *ngIf="proveedorForm.get('telefono')?.invalid && proveedorForm.get('telefono')?.touched">
+        El teléfono es obligatorio.
+      </small>
+    </div>
+
+    <div class="flex flex-col gap-1">
+      <label class="font-medium text-gray-700 text-sm">Correo Electrónico <span class="text-red-500">*</span></label>
+      <input pInputText formControlName="email" type="email" autocomplete="off" />
+      <small class="text-red-500" *ngIf="proveedorForm.get('email')?.invalid && proveedorForm.get('email')?.touched">
+        Ingrese un formato de correo electrónico válido.
+      </small>
+    </div>
+
+    <div class="flex flex-col gap-1 md:col-span-2">
+      <label class="font-medium text-gray-700 text-sm">Dirección Física <span class="text-red-500">*</span></label>
+      <input pInputText formControlName="direccion" autocomplete="off" />
+      <small class="text-red-500" *ngIf="proveedorForm.get('direccion')?.invalid && proveedorForm.get('direccion')?.touched">
+        La dirección es obligatoria.
+      </small>
+    </div>
+  </div>
+
+  <div class="flex justify-end gap-2 pt-4 mt-2 border-t border-gray-100">
+    <p-button label="Cancelar" icon="pi pi-times" styleClass="p-button-text p-button-secondary" (click)="cancelar()" [disabled]="guardando"></p-button>
+    <p-button [label]="modoEdicion ? 'Actualizar' : 'Guardar'" icon="pi pi-check" styleClass="p-button-primary" type="submit" [loading]="guardando"></p-button>
+  </div>
+
+</form>
