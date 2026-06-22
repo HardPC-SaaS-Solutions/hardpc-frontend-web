@@ -10,6 +10,7 @@ export interface DetalleIngresoResponseDTO {
   descripcionProducto: string;
   cantidad: number;
   precioCompraUnitario: number;
+  numerosSerie?: string[];
 }
 
 export interface IngresoCompraResponseDTO {
