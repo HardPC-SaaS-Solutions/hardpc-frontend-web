@@ -1,6 +1,10 @@
 import { Component, inject, OnInit, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, FormsModule } from '@angular/forms';
+import { FormsModule } from '@angular/forms';
+
+// ✨ IMPORTAMOS EL NUEVO COMPONENTE FORMULARIO
+import { ClienteFormComponent } from '../cliente-form/cliente-form.component';
+
 import { ClienteService } from '../../services/cliente.service';
 import { TipoDocumentoService } from '../../../maestros/services/tipo-documento.service';
 import { AuthService } from '../../../auth/services/auth.service';
@@ -19,218 +23,97 @@ import { TooltipModule } from 'primeng/tooltip';
 import { MessageService, ConfirmationService } from 'primeng/api';
 
 /**
- * @description Componente central para la gestión del directorio de Clientes en HardPC.
- * Administra personas naturales y jurídicas implementando validaciones dinámicas de formularios,
- * control estricto de tipos de documentos, un motor robusto de manejo de excepciones y exportación de datos.
+ * @description Componente central (Smart Component / Contenedor) para la administración del directorio de Clientes.
+ * Coordina la carga asíncrona y diferida (Lazy Loading) de la grilla de datos, la barra de filtros cruzados,
+ * los mecanismos de exportación a formatos comerciales (CSV) y las mutaciones de estado in situ (Desactivar/Reactivar).
+ * Delega la captura lógica y validación atómica al componente hijo (`ClienteFormComponent`).
  */
 @Component({
   selector: 'app-cliente-list',
   standalone: true,
   imports: [
-    CommonModule, ReactiveFormsModule, FormsModule, TableModule, ButtonModule,
+    CommonModule, FormsModule, TableModule, ButtonModule,
     TagModule, DialogModule, InputTextModule, SelectModule,
-    ToastModule, ConfirmDialogModule, TooltipModule
+    ToastModule, ConfirmDialogModule, TooltipModule,
+    ClienteFormComponent // ✨ INYECTAMOS AQUÍ
   ],
   providers: [MessageService, ConfirmationService],
   templateUrl: './cliente-list.component.html'
 })
 export class ClienteListComponent implements OnInit {
 
-  /** Referencia nativa a la tabla PrimeNG para gestionar su ciclo de vida y estado (paginación/filtros). */
+  /** Referencia declarativa a la instancia de la tabla PrimeNG para reajustar y extraer metadatos de paginación. */
   @ViewChild('dt') dt!: Table;
 
-  // Inyección de dependencias
+  // --- INYECCIÓN DE DEPENDENCIAS MODERNA ---
   private clienteService = inject(ClienteService);
   private tipoDocService = inject(TipoDocumentoService);
   private authService = inject(AuthService);
-  private fb = inject(FormBuilder);
   private messageService = inject(MessageService);
   private confirmationService = inject(ConfirmationService);
 
   // --- ESTADO DE LA TABLA Y COMBOS ---
-  /** Colección de clientes actuales renderizados en la tabla. */
+  /** Colección de registros de clientes renderizados en la página actual. */
   clientes: ClienteDTO[] = [];
-  /** Catálogo maestro inmutable de tipos de documento obtenidos del backend. */
+  /** Catálogo de referencia de tipos de documento legal pre-cargado para nutrir al formulario hijo. */
   tiposDocumentoMaster: TipoDocumentoDTO[] = [];
-  /** Colección filtrada dinámicamente según el tipo de cliente seleccionado. */
-  opcionesTipoDoc: TipoDocumentoDTO[] = [];
 
-  /** Opciones cortas utilizadas para el filtro superior de la tabla. */
+  /** Mapeo visual estandarizado para el filtrado rápido por categoría de personería. */
   opcionesFiltroTipoCliente = [
     { label: 'Natural', value: TipoCliente.PERSONA_NATURAL },
     { label: 'Empresa', value: TipoCliente.EMPRESA }
   ];
 
-  /** Opciones descriptivas utilizadas en el selector del formulario modal. */
-  opcionesFormTipoCliente = [
-    { label: 'Persona Natural', value: TipoCliente.PERSONA_NATURAL },
-    { label: 'Persona Jurídica (Empresa)', value: TipoCliente.EMPRESA }
-  ];
-
-  /** Total de registros disponibles en la base de datos para la paginación. */
+  /** Contador global de registros que cumplen los criterios de filtrado para el cálculo del paginador. */
   totalRecords: number = 0;
-  /** Indicador de carga visual para la tabla. */
+  /** Bandera reactiva que gestiona el spinner visual de bloqueo durante peticiones HTTP asíncronas. */
   loading: boolean = true;
-  /** Cantidad de registros mostrados por página. */
+  /** Volumen predeterminado de filas expuestas por segmento de página. */
   rowsPerPage: number = 10;
 
-  // --- ESTADO DEL FORMULARIO Y MODAL ---
-  /** Instancia del formulario reactivo para la gestión de datos. */
-  clienteForm!: FormGroup;
-  /** Controla la visibilidad de la ventana modal. */
+  // --- ESTADO DE NAVEGACIÓN Y CONTEXTO MODAL ---
+  /** Gobierna la visibilidad de la ventana modal que encapsula al formulario. */
   modalVisible: boolean = false;
-  /** Determina el contexto del modal: `true` para Edición, `false` para Creación. */
-  modoEdicion: boolean = false;
-  /** Almacena el ID del cliente en curso durante la edición. */
-  idActual: number | null = null;
-  /** Bloquea el botón de guardado para prevenir dobles envíos y conflictos de red. */
-  guardando: boolean = false;
-  /** Almacena la longitud exacta requerida para el documento de identidad seleccionado. */
-  longitudDocRequerida: number | null = null;
+  /** * Contexto operativo de transferencia hacia el componente hijo mediante `@Input()`.
+   * Si es `null`, inicializa el formulario para inserción. Si contiene un objeto, inicializa en modo edición.
+   */
+  clienteSeleccionado: ClienteDTO | null = null;
 
-  // --- ESTADO DE PERMISOS Y FILTROS ---
-  /** Determina si el usuario actual tiene permisos (Admin/Supervisor) para eliminar registros. */
+  /** Control RBAC local: Determina si el usuario actual ostenta facultades para inhabilitar registros comerciales. */
   puedeEliminar: boolean = false;
-  /** Almacena el valor seleccionado en el filtro rápido por tipo de cliente de la tabla. */
+  /** Estado del filtro actual por personería (Natural vs Empresa) seleccionado en la barra superior. */
   filtroTipoCliente: any = null;
 
   /**
-   * @description Inicializa el componente, verifica permisos de usuario mediante RBAC,
-   * construye el formulario y carga los catálogos maestros necesarios.
+   * @description Inicializa el componente validando los permisos de seguridad (RBAC)
+   * y disparando la precarga de los catálogos base requeridos.
    */
   ngOnInit(): void {
     this.puedeEliminar = this.authService.esAdminOSupervisor();
-    this.inicializarFormulario();
     this.cargarCombos();
   }
 
   /**
-   * @description Construye el formulario reactivo base. Suscribe eventos reactivos
-   * al cambio del 'tipoCliente' para disparar mutaciones dinámicas en los controles.
-   */
-  private inicializarFormulario(): void {
-    this.clienteForm = this.fb.group({
-      tipoCliente: [TipoCliente.PERSONA_NATURAL, Validators.required],
-      idTipoDocumento: [null, Validators.required],
-      numeroDocumento: [{value: '', disabled: true}, [Validators.required]],
-
-      nombres: ['', [Validators.required, Validators.maxLength(100)]],
-      apellidos: ['', [Validators.required, Validators.maxLength(100)]],
-      razonSocial: [{value: '', disabled: true}, [Validators.maxLength(150)]],
-
-      telefono: ['', Validators.maxLength(20)],
-      email: ['', [Validators.email, Validators.maxLength(100)]],
-      direccion: ['', Validators.maxLength(255)]
-    });
-
-    this.clienteForm.get('tipoCliente')?.valueChanges.subscribe(tipo => {
-      this.aplicarValidacionesDinamicas(tipo);
-    });
-  }
-
-  /**
-   * @description Modifica dinámicamente el estado y las validaciones del formulario.
-   * Si es Persona Natural: Habilita nombres/apellidos, deshabilita y limpia razón social.
-   * Si es Empresa: Habilita razón social, deshabilita y limpia nombres/apellidos.
-   * @param tipo Valor actual del enum TipoCliente seleccionado.
-   */
-  private aplicarValidacionesDinamicas(tipo: TipoCliente): void {
-    const nombresCtrl = this.clienteForm.get('nombres');
-    const apellidosCtrl = this.clienteForm.get('apellidos');
-    const razonSocialCtrl = this.clienteForm.get('razonSocial');
-
-    if (tipo === TipoCliente.PERSONA_NATURAL) {
-      nombresCtrl?.enable();
-      nombresCtrl?.setValidators([Validators.required, Validators.maxLength(100)]);
-      apellidosCtrl?.enable();
-      apellidosCtrl?.setValidators([Validators.required, Validators.maxLength(100)]);
-
-      razonSocialCtrl?.disable();
-      razonSocialCtrl?.clearValidators();
-      razonSocialCtrl?.setValue('');
-    } else {
-      razonSocialCtrl?.enable();
-      razonSocialCtrl?.setValidators([Validators.required, Validators.maxLength(150)]);
-
-      nombresCtrl?.disable();
-      nombresCtrl?.clearValidators();
-      nombresCtrl?.setValue('');
-      apellidosCtrl?.disable();
-      apellidosCtrl?.clearValidators();
-      apellidosCtrl?.setValue('');
-    }
-
-    nombresCtrl?.updateValueAndValidity();
-    apellidosCtrl?.updateValueAndValidity();
-    razonSocialCtrl?.updateValueAndValidity();
-
-    this.filtrarDocumentosPorTipo(tipo);
-  }
-
-  /**
-   * @description Restringe los documentos de identidad disponibles según el tipo de cliente.
-   * Las Empresas solo pueden usar RUC. Personas Naturales pueden usar DNI, CE, etc.
-   * @param tipo Valor actual del enum TipoCliente seleccionado.
-   */
-  private filtrarDocumentosPorTipo(tipo: TipoCliente): void {
-    if (!this.tiposDocumentoMaster || this.tiposDocumentoMaster.length === 0) return;
-
-    if (tipo === TipoCliente.PERSONA_NATURAL) {
-      this.opcionesTipoDoc = this.tiposDocumentoMaster.filter(doc => doc.abreviatura !== 'RUC');
-    } else {
-      this.opcionesTipoDoc = this.tiposDocumentoMaster.filter(doc => doc.abreviatura === 'RUC');
-    }
-
-    const idSeleccionado = this.clienteForm.get('idTipoDocumento')?.value;
-    if (idSeleccionado) {
-      const sigueSiendoValido = this.opcionesTipoDoc.some(doc => doc.id === idSeleccionado);
-      if (!sigueSiendoValido) {
-        this.clienteForm.get('idTipoDocumento')?.setValue(null);
-        this.clienteForm.get('numeroDocumento')?.setValue('');
-        this.clienteForm.get('numeroDocumento')?.disable();
-        this.longitudDocRequerida = null;
-      }
-    }
-  }
-
-  /**
-   * @description Carga el catálogo maestro de tipos de documento y dispara
-   * el filtro inicial basado en el valor por defecto del formulario.
+   * @description Obtiene de forma proactiva la colección paramétrica de documentos de identidad de la SUNAT,
+   * asegurando que estén disponibles en memoria antes de la interacción con el formulario.
    */
   private cargarCombos(): void {
-    this.tipoDocService.listarParaCombo().subscribe(res => {
-      this.tiposDocumentoMaster = res;
-      this.filtrarDocumentosPorTipo(this.clienteForm.get('tipoCliente')?.value);
+    this.tipoDocService.listarParaCombo().subscribe({
+      next: (res) => {
+        this.tiposDocumentoMaster = res;
+      },
+      error: () => console.error('Error al precargar catálogo de tipos de documento')
     });
   }
 
-  /**
-   * @description Reacciona a la selección de un tipo de documento para habilitar
-   * la entrada del número de documento aplicando su longitud exacta como validación (ej. DNI = 8).
-   * @param event Objeto de evento emitido por el componente select de PrimeNG.
-   */
-  onTipoDocumentoChange(event: any): void {
-    const idSeleccionado = event.value;
-    const tipoDoc = this.tiposDocumentoMaster.find(t => t.id === idSeleccionado);
-    const docControl = this.clienteForm.get('numeroDocumento');
-
-    if (tipoDoc) {
-      this.longitudDocRequerida = tipoDoc.longitudExacta;
-      docControl?.enable();
-      docControl?.setValidators([
-        Validators.required,
-        Validators.minLength(tipoDoc.longitudExacta),
-        Validators.maxLength(tipoDoc.longitudExacta)
-      ]);
-      docControl?.updateValueAndValidity();
-    } else {
-      docControl?.disable();
-    }
-  }
+  // ======================================================================
+  // --- LÓGICA DE CARGA PAGINADA (LAZY LOADING) ---
+  // ======================================================================
 
   /**
-   * @description Carga el listado paginado de clientes inyectando búsquedas y el filtro de tipo de cliente.
-   * @param event Objeto con los metadatos de paginación de la tabla PrimeNG.
+   * @description Despacha hacia el servicio la consulta estructurada del bloque de registros,
+   * empaquetando filtros globales, filtros de cabecera y parámetros de paginación de la grilla.
+   * @param event Encapsulador de eventos y metadatos emitidos por el ciclo nativo de PrimeNG.
    */
   cargarClientes(event: any): void {
     this.loading = true;
@@ -253,18 +136,21 @@ export class ClienteListComponent implements OnInit {
   }
 
   /**
-   * @description Reinicia la tabla a la primera página y recarga los datos
-   * al momento de aplicar un filtro rápido desde la cabecera (Natural/Empresa).
+   * @description Sincroniza e intercepta los cambios manuales en el combo de filtrado por tipo,
+   * reseteando el paginador a la primera posición y recalculando metadatos dinámicamente.
    */
   filtrarPorTipoCabecera(): void {
     this.dt.first = 0;
     this.cargarClientes(this.dt.createLazyLoadMetadata());
   }
 
+  // ======================================================================
+  // --- SUB-SISTEMA DE EXPORTACIÓN ---
+  // ======================================================================
+
   /**
-   * @description Exporta la vista actual de clientes a formato CSV garantizando la
-   * atomicidad de los datos. Mapea la información consolidando las diferencias
-   * entre Personas Naturales y Empresas.
+   * @description Compila y exporta de manera atómica el catálogo visible a un archivo CSV plano.
+   * Inyecta marcas de control (BOM) para blindar la legibilidad de caracteres con tildes o eñes en MS Excel.
    */
   exportarDatos(): void {
     if (!this.clientes || this.clientes.length === 0) {
@@ -282,16 +168,9 @@ export class ClienteListComponent implements OnInit {
       const estado = c.estado ? 'Activo' : 'Inactivo';
 
       return [
-        c.abreviaturaTipoDocumento || '',
-        c.numeroDocumento || '',
-        tipo,
-        c.nombres || '',
-        c.apellidos || '',
-        c.razonSocial || '',
-        c.telefono || '',
-        c.email || '',
-        c.direccion || '',
-        estado
+        c.abreviaturaTipoDocumento || '', c.numeroDocumento || '', tipo,
+        c.nombres || '', c.apellidos || '', c.razonSocial || '',
+        c.telefono || '', c.email || '', c.direccion || '', estado
       ];
     });
 
@@ -311,160 +190,63 @@ export class ClienteListComponent implements OnInit {
     this.messageService.add({ severity: 'success', summary: 'Exportación', detail: 'Archivo CSV generado con éxito' });
   }
 
+  // ======================================================================
+  // --- ENLACE REACTIVO Y CONTROL DEL COMPONENTE HIJO ---
+  // ======================================================================
+
   /**
-   * @description Prepara y despliega el modal en contexto de creación.
-   * Inicializa el formulario como Persona Natural y bloquea campos dependientes.
+   * @description Restablece la variable de selección a nulo para obligar al componente hijo
+   * a inicializar un formulario en blanco adaptado para inserción. Despliega la ventana modal.
    */
   abrirModalNuevo(): void {
-    this.modoEdicion = false;
-    this.idActual = null;
-    this.guardando = false;
-    this.longitudDocRequerida = null;
-
-    this.clienteForm.reset({ tipoCliente: TipoCliente.PERSONA_NATURAL });
-    this.clienteForm.get('tipoCliente')?.enable();
-    this.clienteForm.get('idTipoDocumento')?.enable();
-    this.clienteForm.get('numeroDocumento')?.disable();
-
-    this.aplicarValidacionesDinamicas(TipoCliente.PERSONA_NATURAL);
+    this.clienteSeleccionado = null;
     this.modalVisible = true;
   }
 
   /**
-   * @description Prepara el modal en contexto de edición con datos precargados.
-   * Aplica la inmutabilidad arquitectónica: Identidad (Tipo de Cliente, Doc, Número)
-   * no puede ser modificada una vez registrada.
-   * @param item Instancia del DTO del cliente a editar.
+   * @description Enruta el DTO de datos seleccionado hacia el `@Input()` del formulario hijo,
+   * instruyéndolo a disparar las reglas de hidratación en modo edición.
+   * @param item DTO que representa las propiedades del cliente seleccionado.
    */
   abrirModalEditar(item: ClienteDTO): void {
-    this.modoEdicion = true;
-    this.idActual = item.id!;
-    this.guardando = false;
-
-    this.aplicarValidacionesDinamicas(item.tipoCliente);
-
-    const tipoDoc = this.tiposDocumentoMaster.find(t => t.id === item.idTipoDocumento);
-    this.longitudDocRequerida = tipoDoc?.longitudExacta || null;
-
-    this.clienteForm.patchValue({
-      tipoCliente: item.tipoCliente,
-      idTipoDocumento: item.idTipoDocumento,
-      numeroDocumento: item.numeroDocumento,
-      nombres: item.nombres,
-      apellidos: item.apellidos,
-      razonSocial: item.razonSocial,
-      telefono: item.telefono,
-      email: item.email,
-      direccion: item.direccion
-    });
-
-    this.clienteForm.get('idTipoDocumento')?.disable();
-    this.clienteForm.get('numeroDocumento')?.disable();
-    this.clienteForm.get('tipoCliente')?.disable();
-
+    this.clienteSeleccionado = item;
     this.modalVisible = true;
   }
 
   /**
-   * @description Oculta la ventana modal descartando cualquier cambio.
+   * @description Intercepta la confirmación exitosa (`@Output()`) enviada por el formulario.
+   * Clausura la interfaz modal, recarga la tabla preservando metadatos y lanza una notificación global.
+   * @param clienteGuardado Payload de datos procesado por el backend y devuelto por el hijo.
    */
-  cerrarModal(): void {
+  alGuardarCliente(clienteGuardado: ClienteDTO): void {
     this.modalVisible = false;
+    this.cargarClientes(this.dt.createLazyLoadMetadata());
+    this.messageService.add({ severity: 'success', summary: 'Operación Exitosa', detail: 'El cliente se guardó correctamente.' });
   }
 
+  // ======================================================================
+  // --- ACCIONES OPERATIVAS Y TRANSICIONES DE ESTADO ---
+  // ======================================================================
+
   /**
-   * @description ✨ Motor de excepciones unificado de alta fidelidad.
-   * Intercepta la respuesta de error del backend y mapea la estructura de `ApiErrorResponse`
-   * y sus `detalles` (FieldErrorDTO) para mostrar al usuario notificaciones precisas
-   * sobre qué campos específicos fallaron en las validaciones de Spring Boot.
-   * @param err Objeto de error HTTP interceptado.
+   * @description Consolidador de excepciones del backend. Mapea la estructura estándar
+   * de errores HTTP para transformarla en notificaciones legibles.
    */
   private manejarErrorBackend(err: any): void {
-    this.guardando = false;
     console.error('Error capturado del backend:', err);
-
     let titulo = 'Error del Servidor';
     let mensaje = 'Ocurrió un error inesperado al procesar la solicitud.';
-    let severidad = 'error';
-
-    if (err.status === 0) {
-      titulo = 'Error de Conexión';
-      mensaje = 'No se pudo conectar con el servidor. Verifique su conexión o intente más tarde.';
-    }
-    else if (err.error && err.error.message) {
+    if (err.error && err.error.message) {
       titulo = err.error.error || `Error ${err.status}`;
       mensaje = err.error.message;
-
-      if (err.status === 409 || err.status === 400 || err.status === 404) {
-        severidad = 'warn';
-      }
-
-      // 🌟 Integración exacta con FieldErrorDTO de Java: Extrae campo y mensaje específico
-      if (err.error.detalles && Array.isArray(err.error.detalles) && err.error.detalles.length > 0) {
-        const erroresCampos = err.error.detalles.map((d: any) => `${d.campo}: ${d.mensaje}`).join(' | ');
-        mensaje = `${mensaje} -> ${erroresCampos}`;
-      }
     }
-    else if (err.status === 403 || err.status === 401) {
-      severidad = 'error';
-      titulo = err.status === 401 ? 'No Autorizado' : 'Acceso Denegado';
-      mensaje = 'No tienes los permisos necesarios o tu sesión ha expirado.';
-    }
-
-    this.messageService.add({
-      severity: severidad,
-      summary: titulo,
-      detail: mensaje,
-      life: 6000 // Tiempo extendido para permitir lectura de validaciones detalladas
-    });
+    this.messageService.add({ severity: 'error', summary: titulo, detail: mensaje, life: 6000 });
   }
 
   /**
-   * @description Persiste la información del formulario (POST/PUT).
-   * Valida integridad y bloquea la UI (guardando) para evitar conflictos de red.
-   */
-  guardar(): void {
-    if (this.clienteForm.invalid) {
-      this.clienteForm.markAllAsTouched();
-      this.messageService.add({
-        severity: 'warn',
-        summary: 'Formulario Incompleto',
-        detail: 'Revise los campos marcados en rojo antes de guardar.'
-      });
-      return;
-    }
-
-    this.guardando = true;
-    const formValues = this.clienteForm.getRawValue();
-
-    if (this.modoEdicion && this.idActual) {
-      const existente = this.clientes.find(x => x.id === this.idActual);
-      const data: ClienteDTO = { ...formValues, estado: existente?.estado };
-
-      this.clienteService.actualizar(this.idActual, data).subscribe({
-        next: () => {
-          this.cerrarModal();
-          this.cargarClientes(this.dt.createLazyLoadMetadata());
-          this.messageService.add({ severity: 'success', summary: 'Actualizado', detail: 'Cliente actualizado' });
-        },
-        error: (err) => this.manejarErrorBackend(err)
-      });
-    } else {
-      const data: ClienteDTO = { ...formValues, estado: true };
-      this.clienteService.crear(data).subscribe({
-        next: () => {
-          this.cerrarModal();
-          this.dt.reset();
-          this.messageService.add({ severity: 'success', summary: 'Creado', detail: 'Cliente registrado' });
-        },
-        error: (err) => this.manejarErrorBackend(err)
-      });
-    }
-  }
-
-  /**
-   * @description Solicita confirmación y ejecuta la desactivación lógica del cliente.
-   * @param item Instancia del cliente a desactivar.
+   * @description Despliega una advertencia preventiva de confirmación. Tras ser aceptada, efectúa
+   * una desactivación lógica en la base de datos (preservando el histórico contable/ventas).
+   * @param item Registro de cliente candidato a inhabilitación.
    */
   eliminar(item: ClienteDTO): void {
     this.confirmationService.confirm({
@@ -487,8 +269,9 @@ export class ClienteListComponent implements OnInit {
   }
 
   /**
-   * @description Solicita confirmación y reactiva un cliente previamente desactivado.
-   * @param item Instancia del cliente a reactivar.
+   * @description Despliega un modal de confirmación antes de restaurar los privilegios
+   * y la vigencia comercial del cliente en el sistema de facturación.
+   * @param item Registro de cliente inactivo a rehabilitar.
    */
   restaurar(item: ClienteDTO): void {
     this.confirmationService.confirm({
@@ -511,9 +294,9 @@ export class ClienteListComponent implements OnInit {
   }
 
   /**
-   * @description Utilidad para verificar rápidamente el tipo de cliente en la vista.
-   * @param tipo Valor del enum TipoCliente a evaluar.
-   * @returns Verdadero si es empresa, falso en caso contrario.
+   * @description Evalúa la cadena de personería jurídica del cliente para determinar la estrategia de renderizado.
+   * @param tipo Cadena representativa de la condición comercial.
+   * @returns `true` si el cliente opera como corporación o empresa.
    */
   esPersonaJuridica(tipo: string): boolean {
     return tipo === 'EMPRESA';
