@@ -1,0 +1,199 @@
+<div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+
+  <div
+    class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 pb-6 border-b border-gray-100 gap-4">
+    <div>
+      <h2 class="text-2xl font-bold text-gray-800">Registro e Historial de Ventas</h2>
+      <p class="text-sm text-gray-500 font-medium">Auditoría contable de comprobantes emitidos y flujo de facturación
+      </p>
+    </div>
+    <p-button label="Abre Terminal POS (Venta)" icon="pi pi-desktop"
+      styleClass="p-button-primary shadow-lg shadow-blue-500/30 font-bold" (click)="abrirNuevaVenta()"></p-button>
+  </div>
+
+  <div class="bg-gray-50 p-4 rounded-xl border border-gray-200 mb-6 flex flex-wrap gap-4 items-end">
+    <div class="flex flex-col gap-1.5 flex-1 min-w-[130px]">
+      <label class="text-xs font-bold text-gray-500 uppercase">Desde</label>
+      <input type="date" pInputText [(ngModel)]="filtroFechaInicio" class="w-full text-sm" />
+    </div>
+
+    <div class="flex flex-col gap-1.5 flex-1 min-w-[130px]">
+      <label class="text-xs font-bold text-gray-500 uppercase">Hasta</label>
+      <input type="date" pInputText [(ngModel)]="filtroFechaFin" class="w-full text-sm" />
+    </div>
+
+    <div class="flex flex-col gap-1.5 flex-1 min-w-[200px]">
+      <label class="text-xs font-bold text-gray-500 uppercase">Cliente Adquirente</label>
+      <p-autoComplete [(ngModel)]="clienteFiltroInputText" [suggestions]="clientesSugeridos" optionLabel="displayName"
+        (completeMethod)="buscarClientesFiltro($event)" (onSelect)="onClienteFiltroSelect($event)"
+        (onClear)="onClienteFiltroClear()" placeholder="DNI/RUC o Nombre..." [showClear]="true" styleClass="w-full"
+        inputStyleClass="w-full text-sm">
+        <ng-template let-c pTemplate="item">
+          <div class="flex flex-col">
+            <span class="font-bold text-sm">
+              {{ c.displayName }}
+            </span>
+            <span class="text-xs text-gray-400 font-mono">Doc: {{ c.numeroDocumento }}</span>
+          </div>
+        </ng-template>
+      </p-autoComplete>
+    </div>
+
+    <div class="flex flex-col gap-1.5 flex-1 min-w-[180px]">
+      <label class="text-xs font-bold text-gray-500 uppercase">Sucursal Emisora</label>
+      <p-select [options]="locales" [(ngModel)]="filtroIdLocal" optionLabel="nombre" optionValue="id"
+        placeholder="Todas" [showClear]="true" styleClass="w-full text-sm"></p-select>
+    </div>
+
+    <div class="flex flex-col gap-1.5 flex-1 min-w-[150px]">
+      <label class="text-xs font-bold text-gray-500 uppercase">Estado</label>
+      <p-select [options]="opcionesEstado" [(ngModel)]="filtroEstado" optionLabel="label" optionValue="value"
+        placeholder="Todos" [showClear]="true" styleClass="w-full text-sm"></p-select>
+    </div>
+
+    <div class="flex flex-col gap-1.5 flex-1 min-w-[180px]">
+      <label class="text-xs font-bold text-gray-500 uppercase">Comprobante</label>
+      <span class="p-input-icon-left w-full relative inline-block">
+        <i class="pi pi-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 z-10"></i>
+        <input type="text" pInputText [(ngModel)]="filtroComprobante" placeholder="Ej. B001 o 104"
+          class="w-full text-sm !pl-10" />
+      </span>
+    </div>
+
+    <div class="flex gap-2">
+      <p-button icon="pi pi-search" styleClass="p-button-secondary shadow-md" (click)="aplicarFiltros()"></p-button>
+      <p-button icon="pi pi-filter-slash" pTooltip="Limpiar" styleClass="p-button-outlined p-button-secondary"
+        (click)="limpiarFiltros()"></p-button>
+      <p-button *ngIf="puedeGestionar" icon="pi pi-file-excel" pTooltip="Exportar"
+        styleClass="p-button-success p-button-outlined" (click)="exportarDatos()"></p-button>
+    </div>
+  </div>
+
+  <p-table #dtVentas [value]="ventas" [lazy]="true" (onLazyLoad)="cargarVentas($event)" [rows]="10"
+    [totalRecords]="totalRecords" [paginator]="true" [loading]="loading" [rowsPerPageOptions]="[10, 20, 50]"
+    styleClass="p-datatable-sm">
+    <ng-template pTemplate="header">
+      <tr>
+        <th class="w-40 text-center">Fecha Venta</th>
+        <th class="w-44 text-center">Comprobante</th>
+        <th>Cliente Receptor</th>
+        <th class="w-44">Sucursal</th>
+        <th class="w-36">Canal de Pago</th>
+        <th class="w-32 text-right">Total Neto</th>
+        <th class="w-28 text-center">Estado</th>
+        <th class="w-24 text-center">Acciones</th>
+      </tr>
+    </ng-template>
+    <ng-template pTemplate="body" let-venta>
+      <tr class="hover:bg-gray-50 transition-colors" [ngClass]="{'opacity-60': venta.estadoVenta === 'ANULADA'}">
+        <td class="text-center font-medium text-xs text-gray-500">{{ venta.fechaVenta | date:'dd/MM/yyyy HH:mm' }}</td>
+        <td>
+          <div class="flex flex-col text-center">
+            <span class="text-[9px] font-black text-gray-400 uppercase">{{ venta.descripcionTipoComprobante }}</span>
+            <span class="font-mono text-xs font-bold text-blue-700">{{ venta.serieComprobante }}-{{
+              venta.numeroComprobante }}</span>
+          </div>
+        </td>
+        <td class="font-semibold text-gray-800 line-clamp-1 py-3" [pTooltip]="venta.nombreCliente">{{
+          venta.nombreCliente }}</td>
+        <td class="text-xs font-medium text-gray-600"><i class="pi pi-building text-[10px] mr-1"></i>{{
+          venta.nombreLocal }}</td>
+        <td class="text-xs font-bold text-gray-500 uppercase"><i class="pi pi-credit-card text-[10px] mr-1"></i>{{
+          venta.descripcionFormaPago }}</td>
+        <td class="text-right font-black text-gray-900">S/ {{ venta.totalVenta | number:'1.2-2' }}</td>
+        <td class="text-center"><p-tag [severity]="getSeverityEstado(venta.estadoVenta)"
+            [value]="venta.estadoVenta"></p-tag></td>
+        <td class="text-center">
+          <div class="flex justify-center gap-0.5">
+            <p-button icon="pi pi-eye" styleClass="p-button-text p-button-info p-button-sm" pTooltip="Detalles"
+              (click)="verDetalle(venta)"></p-button>
+            <p-button *ngIf="puedeGestionar && venta.estadoVenta === 'REGISTRADA'" icon="pi pi-times-circle"
+              styleClass="p-button-text p-button-danger p-button-sm" pTooltip="Anular"
+              (click)="anularVenta(venta)"></p-button>
+          </div>
+        </td>
+      </tr>
+    </ng-template>
+  </p-table>
+</div>
+
+<p-dialog *ngIf="ventaSeleccionada" header="Desglose del Comprobante" [(visible)]="modalDetalleVisible" [modal]="true"
+  [style]="{ width: '780px', 'max-height': '90vh' }" [draggable]="false" [resizable]="false" styleClass="p-fluid">
+
+  <div *ngIf="ventaSeleccionada.estadoVenta === 'ANULADA'"
+    class="bg-red-50 border-l-4 border-red-500 p-4 mb-4 rounded-r-xl flex items-start gap-3">
+    <i class="pi pi-exclamation-triangle text-red-500 text-xl mt-0.5"></i>
+    <div>
+      <h3 class="text-red-800 font-bold uppercase text-xs">Comprobante Anulado</h3>
+      <p class="text-red-600 text-xs mt-0.5">Venta invalidada. El stock retornó al almacén y las series fueron
+        liberadas.</p>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 bg-gray-50 p-4 rounded-xl border border-gray-200">
+    <div>
+      <p class="text-xs font-bold text-gray-400 uppercase">Cliente</p>
+      <p class="font-bold text-gray-800 text-sm">{{ ventaSeleccionada.nombreCliente }}</p>
+    </div>
+    <div>
+      <p class="text-xs font-bold text-gray-400 uppercase">Documento</p>
+      <p class="font-mono text-sm font-bold text-blue-700">{{ ventaSeleccionada.descripcionTipoComprobante }} {{
+        ventaSeleccionada.serieComprobante }}-{{ ventaSeleccionada.numeroComprobante }}</p>
+    </div>
+    <div>
+      <p class="text-xs font-bold text-gray-400 uppercase">Local / Cajero</p>
+      <p class="text-sm font-medium text-gray-600">{{ ventaSeleccionada.nombreLocal }} <span
+          class="text-gray-400 text-xs">({{ ventaSeleccionada.username }})</span></p>
+    </div>
+    <div>
+      <p class="text-xs font-bold text-gray-400 uppercase">Total</p>
+      <p class="text-sm font-bold text-emerald-700">S/ {{ ventaSeleccionada.totalVenta | number:'1.2-2' }} <span
+          class="text-gray-400 text-xs font-normal">(IGV: S/ {{ ventaSeleccionada.impuesto | number:'1.2-2' }})</span>
+      </p>
+    </div>
+  </div>
+
+  <p-table [value]="ventaSeleccionada.detalles" styleClass="p-datatable-sm" [rowHover]="true">
+    <ng-template pTemplate="header">
+      <tr>
+        <th class="w-24 text-center">SKU</th>
+        <th>Artículo Despachado</th>
+        <th class="w-16 text-center">Cant.</th>
+        <th class="w-24 text-right">Dcto.</th>
+        <th class="w-28 text-right">Subtotal</th>
+      </tr>
+    </ng-template>
+    <ng-template pTemplate="body" let-det>
+      <tr>
+        <td class="font-mono font-bold text-gray-400 text-xs text-center align-top pt-3">{{ det.codigoSkuProducto }}
+        </td>
+        <td>
+          <div class="flex flex-col gap-1 py-1">
+            <span class="font-semibold text-gray-800 text-xs">{{ det.descripcionProducto }}</span>
+            <div *ngIf="det.numeroSerie" class="mt-0.5">
+              <span
+                class="bg-emerald-50 text-emerald-700 font-mono text-[10px] font-bold px-2 py-0.5 rounded border border-emerald-200">
+                <i class="pi pi-barcode text-[9px] mr-1"></i>SN: {{ det.numeroSerie }}
+              </span>
+            </div>
+          </div>
+        </td>
+        <td class="text-center font-bold text-gray-700 align-top pt-3">{{ det.cantidad }}</td>
+        <td class="text-right text-red-500 font-medium text-xs align-top pt-3">-S/ {{ det.descuento | number:'1.2-2' }}
+        </td>
+        <td class="text-right font-black text-gray-900 text-xs bg-gray-50/50 align-top pt-3">S/ {{ ((det.cantidad *
+          det.precioVentaUnitario) - det.descuento) | number:'1.2-2' }}</td>
+      </tr>
+    </ng-template>
+  </p-table>
+
+  <ng-template pTemplate="footer">
+    <div class="flex justify-end mt-3 border-t pt-3 border-gray-100">
+      <p-button label="Cerrar Panel" icon="pi pi-times" styleClass="p-button-text p-button-secondary"
+        (click)="cerrarModalDetalle()"></p-button>
+    </div>
+  </ng-template>
+</p-dialog>
+
+<p-toast position="top-right"></p-toast>
+<p-confirmDialog [style]="{width: '450px'}"></p-confirmDialog>
