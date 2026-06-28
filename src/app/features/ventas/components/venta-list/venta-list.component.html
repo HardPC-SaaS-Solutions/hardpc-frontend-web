@@ -94,8 +94,11 @@
               venta.numeroComprobante }}</span>
           </div>
         </td>
-        <td class="font-semibold text-gray-800 line-clamp-1 py-3" [pTooltip]="venta.nombreCliente">{{
-          venta.nombreCliente }}</td>
+        <td>
+          <span class="block font-semibold text-gray-800 truncate" [pTooltip]="venta.nombreCliente">
+            {{ venta.nombreCliente }}
+          </span>
+        </td>
         <td class="text-xs font-medium text-gray-600"><i class="pi pi-building text-[10px] mr-1"></i>{{
           venta.nombreLocal }}</td>
         <td class="text-xs font-bold text-gray-500 uppercase"><i class="pi pi-credit-card text-[10px] mr-1"></i>{{
