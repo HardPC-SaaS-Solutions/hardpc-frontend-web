@@ -34,3 +34,10 @@ export interface ItemSerialDTO {
   descripcionProducto?: string;
   nombreLocal?: string;
 }
+
+export interface ResumenEstadoSerialDTO {
+  idLocal: number;
+  nombreLocal: string;
+  estadoDisponibilidad: EstadoDisponibilidad;
+  cantidad: number;
+}
