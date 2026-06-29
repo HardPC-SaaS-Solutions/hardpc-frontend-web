@@ -265,3 +265,36 @@
     </div>
   </ng-template>
 </p-dialog>
+
+<p-dialog header="Apertura de Caja (Inicio de Turno)" [(visible)]="modalCajaVisible" [modal]="true"
+          [style]="{ width: '450px' }" [draggable]="false" [resizable]="false"
+          [closable]="false" [closeOnEscape]="false">
+
+  <div class="mb-5 text-sm text-gray-600 bg-blue-50 p-3 rounded-lg border border-blue-100 flex items-start gap-3">
+    <i class="pi pi-info-circle text-blue-500 text-xl mt-0.5"></i>
+    <p class="leading-relaxed">Por políticas de seguridad, debe aperturar una caja registradora y declarar su <b>fondo inicial de cambio</b> antes de acceder a la terminal de facturación.</p>
+  </div>
+
+  <form [formGroup]="cajaForm" class="flex flex-col gap-4">
+    <div class="flex flex-col gap-1.5">
+      <label class="text-xs font-bold text-gray-600 uppercase tracking-wider">Sucursal / Almacén de Caja <span class="text-red-500">*</span></label>
+      <p-select formControlName="idLocal" [options]="locales" optionLabel="nombre" optionValue="id"
+                placeholder="Seleccione dónde operará hoy" styleClass="w-full" appendTo="body"></p-select>
+    </div>
+
+    <div class="flex flex-col gap-1.5">
+      <label class="text-xs font-bold text-gray-600 uppercase tracking-wider">Monto Inicial en Gaveta (S/) <span class="text-red-500">*</span></label>
+      <p-inputNumber formControlName="montoApertura" mode="currency" currency="PEN" locale="es-PE"
+                     inputStyleClass="w-full text-right text-lg font-bold text-emerald-600 p-2"
+                     styleClass="w-full" [min]="0"></p-inputNumber>
+    </div>
+  </form>
+
+  <ng-template pTemplate="footer">
+    <div class="flex justify-between items-center mt-2 border-t pt-4 border-gray-100 w-full">
+      <p-button label="Salir del POS" icon="pi pi-arrow-left" styleClass="p-button-text p-button-secondary" (click)="cancelarAperturaCaja()"></p-button>
+      <p-button label="Aperturar Caja" icon="pi pi-check-circle" styleClass="p-button-primary shadow-md font-bold"
+                (click)="confirmarAperturaCaja()" [loading]="abriendoCaja"></p-button>
+    </div>
+  </ng-template>
+</p-dialog>

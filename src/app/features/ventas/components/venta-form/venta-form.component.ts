@@ -13,6 +13,8 @@ import { ItemSerialService } from '../../../inventario/services/item-serial.serv
 import { StockLocalService } from '../../../inventario/services/stock-local.service'; // ✨ NUEVO SERVICIO INYECTADO
 import { TipoDocumentoService } from '../../../maestros/services/tipo-documento.service';
 import { TipoDocumentoDTO } from '../../../../core/models/tipo-documento.dto';
+import { CajaSesionDTO, CajaSesionRequestDTO } from '../../../../core/models/caja-sesion.dto';
+import { CajaService} from '../../services/caja.service';
 
 import { VentaRequestDTO } from '../../../../core/models/venta.dto';
 import { LocalDTO } from '../../../../core/models/local.dto';
@@ -64,6 +66,7 @@ export class VentaFormComponent implements OnInit {
   private itemSerialService = inject(ItemSerialService);
   private stockLocalService = inject(StockLocalService); // ✨ INYECCIÓN DEL STOCK
   private tipoDocService    = inject(TipoDocumentoService);
+  private cajaService       = inject(CajaService);
   private router            = inject(Router);
 
   /** Formulario reactivo principal que encapsula encabezado y detalle de la venta. */
@@ -121,6 +124,12 @@ export class VentaFormComponent implements OnInit {
   /** Series que el cajero ha marcado para despacho en la sesión actual del modal. */
   serialesSeleccionados: string[] = [];
 
+  // ✨ NUEVAS VARIABLES PARA EL CONTROL DE CAJA
+  cajaForm!: FormGroup;
+  modalCajaVisible = false;
+  abriendoCaja = false;
+  cajaActiva: CajaSesionDTO | null = null;
+
   /**
    * @description Inicializa el formulario reactivo y precarga los catálogos de locales y tipos de documento.
    */
@@ -129,6 +138,7 @@ export class VentaFormComponent implements OnInit {
     this.localService.listarParaCombo().subscribe(res => this.locales = res);
     this.tipoDocService.listarParaCombo().subscribe(res => this.tiposDocumentoMaster = res);
     this.detalles.valueChanges.subscribe(() => this.calcularEstructuraFinanciera());
+    this.verificarEstadoCaja();
   }
 
   /**
@@ -140,12 +150,17 @@ export class VentaFormComponent implements OnInit {
       idCliente:         [null, Validators.required],
       idTipoComprobante: [2,    Validators.required],
       idFormaPago:       [1,    Validators.required],
-      idLocal:           [null, Validators.required],
+      idLocal: [{ value: null, disabled: true }, Validators.required], // ✨ LO DESHABILITAMOS POR DEFECTO
       serieComprobante:  ['',   [Validators.required, Validators.pattern(/^[BFAz0-9]{4}$/)]],
       numeroComprobante: ['',   [Validators.required, Validators.pattern(/^[0-9]{1,8}$/)]],
       impuesto:          [0,    Validators.required],
       totalVenta:        [0,    Validators.required],
       detalles: this.fb.array([], Validators.minLength(1))
+    });
+
+    this.cajaForm = this.fb.group({
+      idLocal: [null, Validators.required],
+      montoApertura: [0, [Validators.required, Validators.min(0)]]
     });
 
     // ✨ LISTENER DE SEGURIDAD: Vaciar carrito si se cambia el local origen a mitad de la venta
@@ -160,6 +175,65 @@ export class VentaFormComponent implements OnInit {
         });
       }
     });
+  }
+
+  // ✨ MÉTODOS DE ARQUEO DE CAJA
+  private verificarEstadoCaja(): void {
+    this.cajaService.obtenerMiCajaActiva().subscribe({
+      next: (caja) => {
+        if (caja) {
+          // TIENE CAJA ABIERTA -> Configurar el POS y permitir la venta
+          this.cajaActiva = caja;
+          this.vincularLocalCaja(caja);
+        } else {
+          // NO TIENE CAJA -> Bloquear la pantalla mostrando el modal ineludible
+          this.modalCajaVisible = true;
+        }
+      },
+      error: () => this.messageService.add({ severity: 'error', summary: 'Error', detail: 'No se pudo verificar el estado de la caja.' })
+    });
+  }
+
+  confirmarAperturaCaja(): void {
+    if (this.cajaForm.invalid) {
+      this.cajaForm.markAllAsTouched();
+      return;
+    }
+
+    this.abriendoCaja = true;
+    const payload = this.cajaForm.getRawValue();
+
+    this.cajaService.aperturarCaja(payload).subscribe({
+      next: (cajaAbierta) => {
+        this.abriendoCaja = false;
+        this.modalCajaVisible = false;
+        this.cajaActiva = cajaAbierta;
+        this.vincularLocalCaja(cajaAbierta);
+        this.messageService.add({ severity: 'success', summary: 'Caja Aperturada', detail: 'Turno iniciado correctamente. Puede procesar ventas.' });
+      },
+      error: (err) => {
+        this.abriendoCaja = false;
+        const msg = err?.error?.message || 'Error al aperturar la caja.';
+        this.messageService.add({ severity: 'error', summary: 'Operación Denegada', detail: msg });
+      }
+    });
+  }
+
+  cancelarAperturaCaja(): void {
+    // Si cancela, lo sacamos del POS porque no puede vender sin caja
+    this.router.navigate(['/ventas']);
+  }
+
+  /**
+   * Asegura que las ventas del cajero se registren en el mismo local donde abrió la caja,
+   * bloqueando el combo para prevenir el 'ERR_CAJA_LOCAL_MISMATCH'.
+   */
+  private vincularLocalCaja(caja: CajaSesionDTO): void {
+    const localId = caja.local?.idLocal || caja.idLocal;
+    if (localId) {
+      this.ventaForm.patchValue({ idLocal: localId });
+      // Extraemos el valor crudo en el submit ya que los campos disabled no se envían en el .value normal
+    }
   }
 
   /**
