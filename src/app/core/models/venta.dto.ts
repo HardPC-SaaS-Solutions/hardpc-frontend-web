@@ -68,3 +68,16 @@ export interface VentasPorClienteDTO {
   totalComprado: number;
   cantidadVentas: number;
 }
+
+export interface TopProductoDTO {
+  idProducto: number;
+  descripcion: string;
+  cantidadVendida: number;
+}
+
+export interface RendimientoCajeroDTO {
+  idUsuario: number;
+  username: string;
+  totalVendido: number;
+  cantidadTransacciones: number;
+}

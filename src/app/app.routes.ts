@@ -31,6 +31,7 @@ import { IngresoFormComponent } from './features/compras/components/ingreso-form
 import { VentaListComponent } from './features/ventas/components/venta-list/venta-list.component';
 import { VentaFormComponent } from './features/ventas/components/venta-form/venta-form.component';
 import { CierreCajaComponent } from './features/ventas/components/cierre-caja/cierre-caja.component';
+import { DashboardGerencialComponent } from './features/dashboard/components/dashboard-gerencial/dashboard-gerencial.component';
 
 /**
  * @description Configuración principal de enrutamiento para el Sistema Administrativo de HardPC.
@@ -49,6 +50,8 @@ export const routes: Routes = [
     component: AppLayoutComponent,
     canActivate: [authGuard],
     children: [
+
+      { path: 'dashboard', component: DashboardGerencialComponent },
 
       // =======================================================
       // MÓDULO MAESTROS: Panel de control y catálogos base
@@ -111,7 +114,7 @@ export const routes: Routes = [
       {
         path: 'ventas/cierre-caja',
         component: CierreCajaComponent
-      }
+      },
     ]
   },
   {

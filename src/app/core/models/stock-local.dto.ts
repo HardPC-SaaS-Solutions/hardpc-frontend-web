@@ -12,3 +12,9 @@ export interface StockLocalDTO {
   descripcionProducto?: string;
   nombreLocal?: string;
 }
+
+export interface InversionStockDTO {
+  idLocal: number;
+  nombreLocal: string;
+  totalInversion: number;
+}

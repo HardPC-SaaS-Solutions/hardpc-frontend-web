@@ -1,0 +1,137 @@
+<div class="p-6 bg-gray-50 min-h-screen pb-12">
+  <div class="mb-8">
+    <h2 class="text-3xl font-black text-gray-800 tracking-tight">Inteligencia de Negocios (BI)</h2>
+    <p class="text-gray-500 font-medium">Análisis transaccional de Ventas, Compras y Logística.</p>
+  </div>
+
+  <div *ngIf="cargando" class="flex flex-col items-center justify-center py-32 text-gray-400">
+    <i class="pi pi-spin pi-spinner text-5xl mb-4 text-blue-500"></i>
+    <span class="font-bold tracking-wide">Orquestando datos gerenciales...</span>
+  </div>
+
+  <div *ngIf="errorCarga" class="bg-red-50 p-6 rounded-xl border border-red-200 text-center text-red-600">
+    <i class="pi pi-exclamation-triangle text-4xl mb-2"></i>
+    <p class="font-bold">Error de conexión al servidor. No se pudieron cargar los reportes.</p>
+  </div>
+
+  <div *ngIf="!cargando && !errorCarga" class="flex flex-col gap-6">
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+      <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between">
+        <div>
+          <p class="text-xs text-gray-400 font-bold uppercase tracking-wider mb-1">Ingresos (Mes Actual)</p>
+          <p class="text-3xl font-black text-emerald-600">S/ {{ ingresoMesActual | number:'1.2-2' }}</p>
+        </div>
+        <div class="bg-emerald-50 w-14 h-14 rounded-full flex items-center justify-center">
+          <i class="pi pi-arrow-up text-emerald-500 text-2xl"></i>
+        </div>
+      </div>
+
+      <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between">
+        <div>
+          <p class="text-xs text-gray-400 font-bold uppercase tracking-wider mb-1">Gastos (Mes Actual)</p>
+          <p class="text-3xl font-black text-red-600">S/ {{ gastoMesActual | number:'1.2-2' }}</p>
+        </div>
+        <div class="bg-red-50 w-14 h-14 rounded-full flex items-center justify-center">
+          <i class="pi pi-arrow-down text-red-500 text-2xl"></i>
+        </div>
+      </div>
+
+      <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-center">
+        <p class="text-xs text-gray-400 font-bold uppercase tracking-wider mb-2 border-b border-gray-100 pb-1">
+          Capital en Stock (Granel)
+        </p>
+        <div class="max-h-20 overflow-y-auto">
+          <div *ngFor="let inv of inversionPorLocal" class="flex justify-between text-sm mb-1">
+            <span class="text-gray-600 font-medium">{{ inv.nombreLocal }}</span>
+            <span class="font-bold text-gray-800">S/ {{ inv.totalInversion | number:'1.2-2' }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+      <h3 class="text-sm font-bold text-gray-800 uppercase tracking-wide border-b border-gray-100 pb-3 mb-5 flex items-center gap-2">
+        <i class="pi pi-chart-bar text-blue-500"></i> Flujo Financiero Comparativo (Ventas vs Compras)
+      </h3>
+      <p-chart type="bar" [data]="finanzasData" [options]="barChartOptions" height="300px"></p-chart>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+      <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+        <h3 class="text-sm font-bold text-gray-800 uppercase tracking-wide border-b border-gray-100 pb-3 mb-5">
+          <i class="pi pi-star-fill text-blue-500 mr-2"></i> Top 10 Hardware
+        </h3>
+        <p-chart type="bar" [data]="topProductosData" [options]="barChartOptions" height="250px"></p-chart>
+      </div>
+
+      <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+        <h3 class="text-sm font-bold text-gray-800 uppercase tracking-wide border-b border-gray-100 pb-3 mb-5">
+          <i class="pi pi-users text-orange-500 mr-2"></i> Ventas por Cajero
+        </h3>
+        <div class="flex justify-center">
+          <p-chart type="doughnut" [data]="rendimientoCajerosData" [options]="pieChartOptions" width="300%"></p-chart>
+        </div>
+      </div>
+
+      <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+        <h3 class="text-sm font-bold text-gray-800 uppercase tracking-wide border-b border-gray-100 pb-3 mb-5">
+          <i class="pi pi-barcode text-purple-500 mr-2"></i> Estado Componentes (S/N)
+        </h3>
+        <div class="flex justify-center">
+          <p-chart type="polarArea" [data]="estadoSerialesData" [options]="pieChartOptions" width="500%"></p-chart>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+      <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+        <h3 class="text-sm font-bold text-gray-800 uppercase tracking-wide border-b border-gray-100 pb-3 mb-4">
+          <i class="pi pi-wallet text-emerald-500 mr-2"></i> Top Clientes (Mayor Facturación)
+        </h3>
+        <p-table [value]="topClientes" [paginator]="true" [rows]="5" styleClass="p-datatable-sm p-datatable-striped">
+          <ng-template pTemplate="header">
+            <tr>
+              <th>Cliente Adquirente</th>
+              <th class="text-center">Transacciones</th>
+              <th class="text-right">Total Comprado</th>
+            </tr>
+          </ng-template>
+          <ng-template pTemplate="body" let-cliente>
+            <tr>
+              <td class="font-medium text-sm">{{ cliente.nombreAplanado }}</td>
+              <td class="text-center"><p-badge [value]="cliente.cantidadVentas" severity="info"></p-badge></td>
+              <td class="text-right font-bold text-emerald-600">S/ {{ cliente.totalComprado | number:'1.2-2' }}</td>
+            </tr>
+          </ng-template>
+        </p-table>
+      </div>
+
+      <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+        <h3 class="text-sm font-bold text-gray-800 uppercase tracking-wide border-b border-gray-100 pb-3 mb-4">
+          <i class="pi pi-truck text-red-500 mr-2"></i> Top Proveedores (Mayor Gasto)
+        </h3>
+        <p-table [value]="topProveedores" [paginator]="true" [rows]="5" styleClass="p-datatable-sm p-datatable-striped">
+          <ng-template pTemplate="header">
+            <tr>
+              <th>Razón Social</th>
+              <th class="text-center">N° Compras</th>
+              <th class="text-right">Total Gastado</th>
+            </tr>
+          </ng-template>
+          <ng-template pTemplate="body" let-prov>
+            <tr>
+              <td class="font-medium text-sm">{{ prov.razonSocialProveedor }}</td>
+              <td class="text-center"><p-badge [value]="prov.cantidadCompras" severity="warn"></p-badge></td>
+              <td class="text-right font-bold text-red-600">S/ {{ prov.totalGasto | number:'1.2-2' }}</td>
+            </tr>
+          </ng-template>
+        </p-table>
+      </div>
+
+    </div>
+  </div>
+</div>

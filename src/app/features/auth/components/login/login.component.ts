@@ -45,7 +45,7 @@ export class LoginComponent {
       this.authService.login(this.loginForm.value).subscribe({
         next: () => {
           // Autenticación exitosa: Redirección al panel principal del sistema.
-          this.router.navigate(['/']);
+          this.router.navigate(['/dashboard']);
         },
         error: (err: unknown) => {
           console.error('Error de autenticación:', err);
