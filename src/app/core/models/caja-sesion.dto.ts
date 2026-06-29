@@ -9,5 +9,8 @@ export interface CajaSesionDTO {
   local?: { idLocal: number; nombre: string }; // Por si retorna el objeto anidado
   fechaApertura: string;
   montoApertura: number;
+  montoCierreEfectivoReal?: number;
+  fechaCierre?: string;
+  montoCierreSistema?: number;
   estado: string;
 }

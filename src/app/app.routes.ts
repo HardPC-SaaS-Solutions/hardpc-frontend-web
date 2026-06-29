@@ -30,6 +30,7 @@ import { IngresoListComponent } from './features/compras/components/ingreso-list
 import { IngresoFormComponent } from './features/compras/components/ingreso-form/ingreso-form.component';
 import { VentaListComponent } from './features/ventas/components/venta-list/venta-list.component';
 import { VentaFormComponent } from './features/ventas/components/venta-form/venta-form.component';
+import { CierreCajaComponent } from './features/ventas/components/cierre-caja/cierre-caja.component';
 
 /**
  * @description Configuración principal de enrutamiento para el Sistema Administrativo de HardPC.
@@ -105,6 +106,11 @@ export const routes: Routes = [
         // Registro de una nueva venta.
         path: 'ventas/nuevo',
         component: VentaFormComponent
+      },
+
+      {
+        path: 'ventas/cierre-caja',
+        component: CierreCajaComponent
       }
     ]
   },

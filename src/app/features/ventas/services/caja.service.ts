@@ -25,4 +25,8 @@ export class CajaService {
   aperturarCaja(dto: CajaSesionRequestDTO): Observable<CajaSesionDTO> {
     return this.http.post<CajaSesionDTO>(`${this.URL}/aperturar`, dto);
   }
+
+  cerrarCaja(montoCierreEfectivoReal: number): Observable<CajaSesionDTO> {
+    return this.http.post<CajaSesionDTO>(`${this.URL}/cerrar`, { montoCierreEfectivoReal });
+  }
 }

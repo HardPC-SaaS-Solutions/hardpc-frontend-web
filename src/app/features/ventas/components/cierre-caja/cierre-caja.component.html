@@ -1,0 +1,47 @@
+<div class="bg-gray-50 min-h-screen flex items-center justify-center p-4">
+  <p-toast position="top-right"></p-toast>
+
+  <div class="bg-white p-8 rounded-2xl shadow-lg border border-gray-100 max-w-lg w-full relative" *ngIf="!verificando && cajaActiva">
+
+    <div class="text-center mb-6">
+      <div class="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+        <i class="pi pi-lock text-3xl text-blue-600"></i>
+      </div>
+      <h2 class="text-2xl font-black text-gray-800">Cierre de Turno</h2>
+      <p class="text-sm text-gray-500 mt-1">Declare el efectivo físico en su gaveta para finalizar la jornada operativa.</p>
+    </div>
+
+    <div class="bg-gray-50 p-4 rounded-xl mb-6 border border-gray-100 flex flex-col gap-2 text-sm">
+      <div class="flex justify-between">
+        <span class="text-gray-500 font-medium">Caja Aperturada:</span>
+        <span class="font-bold text-gray-800">{{ cajaActiva.fechaApertura | date:'dd/MM/yyyy hh:mm a' }}</span>
+      </div>
+      <div class="flex justify-between border-t border-gray-200 pt-2 mt-1">
+        <span class="text-gray-500 font-medium">Fondo Inicial:</span>
+        <span class="font-bold text-gray-800">S/ {{ cajaActiva.montoApertura | number:'1.2-2' }}</span>
+      </div>
+    </div>
+
+    <form [formGroup]="cierreForm" class="flex flex-col gap-6" (ngSubmit)="procesarCierre()">
+      <div class="flex flex-col gap-2">
+        <label class="text-xs font-bold text-gray-600 uppercase tracking-widest text-center">Efectivo Físico Contado (S/) <span class="text-red-500">*</span></label>
+        <p-inputNumber formControlName="montoCierreEfectivoReal" mode="currency" currency="PEN" locale="es-PE"
+                       inputStyleClass="w-full text-center text-3xl font-black text-emerald-600 p-4 bg-emerald-50 border-emerald-200 rounded-xl"
+                       styleClass="w-full" [min]="0"></p-inputNumber>
+        <small class="text-center text-red-500 font-medium" *ngIf="cierreForm.get('montoCierreEfectivoReal')?.invalid && cierreForm.get('montoCierreEfectivoReal')?.touched">
+          Debe ingresar el monto físico real de la caja.
+        </small>
+      </div>
+
+      <div class="flex gap-3 mt-2">
+        <p-button label="Mantener Abierta" icon="pi pi-times" styleClass="p-button-outlined p-button-secondary w-full" (click)="cancelar()"></p-button>
+        <p-button label="Procesar Cierre" icon="pi pi-check-circle" styleClass="p-button-primary w-full shadow-md" type="submit" [loading]="procesando"></p-button>
+      </div>
+    </form>
+  </div>
+
+  <div *ngIf="verificando" class="flex flex-col items-center justify-center text-gray-400 gap-3">
+    <i class="pi pi-spin pi-spinner text-4xl"></i>
+    <span class="font-medium text-sm">Verificando estado de caja...</span>
+  </div>
+</div>

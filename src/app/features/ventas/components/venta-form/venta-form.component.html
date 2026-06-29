@@ -11,11 +11,16 @@
         </p>
       </div>
     </div>
-    <div class="flex gap-2">
-      <p-button label="Cancelar Orden" styleClass="p-button-text p-button-secondary font-bold"
-        (click)="cancelarOperacion()" [disabled]="guardando"></p-button>
-      <p-button label="Emitir Comprobante" icon="pi pi-print" styleClass="p-button-primary shadow-md font-bold"
-        (click)="procesarFacturacion()" [loading]="guardando"></p-button>
+    <div class="flex gap-2 items-center">
+      <p-button *ngIf="cajaActiva" label="Cerrar Caja (Fin Turno)" icon="pi pi-lock"
+                styleClass="p-button-outlined p-button-danger font-bold text-xs"
+                (click)="irAlCierreDeCaja()" [disabled]="guardando">
+      </p-button>
+
+      <span class="text-gray-300 mx-1" *ngIf="cajaActiva">|</span>
+
+      <p-button label="Cancelar Orden" styleClass="p-button-text p-button-secondary font-bold text-xs" (click)="cancelarOperacion()" [disabled]="guardando"></p-button>
+      <p-button label="Emitir Comprobante" icon="pi pi-print" styleClass="p-button-primary shadow-md font-bold text-xs" (click)="procesarFacturacion()" [loading]="guardando"></p-button>
     </div>
   </div>
 

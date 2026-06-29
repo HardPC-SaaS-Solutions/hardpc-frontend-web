@@ -236,6 +236,11 @@ export class VentaFormComponent implements OnInit {
     }
   }
 
+  // Añade este método en tu VentaFormComponent:
+  irAlCierreDeCaja(): void {
+    this.router.navigate(['/ventas/cierre-caja']);
+  }
+
   /**
    * @description Acceso directo al FormArray de líneas de detalle dentro del formulario principal.
    */
