@@ -495,10 +495,14 @@ export class VentaFormComponent implements OnInit {
     };
 
     this.ventaService.registrarVenta(payload).subscribe({
-      next: () => {
-        this.messageService.add({ severity: 'success', summary: 'Venta Consolidada', detail: 'Comprobante emitido y stock descargado.' });
-        // Redirige al listado tras confirmar la operación en backend.
-        setTimeout(() => this.router.navigate(['/ventas']), 1500);
+      next: (res: any) => { // 'res' es VentaResponseDTO
+        this.messageService.add({ severity: 'success', summary: 'Venta Consolidada', detail: 'Emitiendo ticket y descargando stock...' });
+
+        // Asumiendo que tu VentaResponseDTO retorna el ID bajo el nombre "id" o "idVenta"
+        const idGenerado = res.id || res.idVenta;
+
+        // 🚀 Disparar Callback de Cierre e Impresión
+        this.ejecutarFlujoImpresionYCierre(idGenerado);
       },
       error: err => {
         this.guardando = false;
@@ -513,5 +517,37 @@ export class VentaFormComponent implements OnInit {
    */
   cancelarOperacion(): void {
     this.router.navigate(['/ventas']);
+  }
+
+  /**
+   * @description Orquesta la recuperación del PDF, la limpieza de la pantalla
+   * y la redirección post-venta.
+   */
+  private ejecutarFlujoImpresionYCierre(idVenta: number): void {
+    this.ventaService.generarTicketPdf(idVenta).subscribe({
+      next: (blob) => {
+        // 1. Crear URL temporal del blob recibido
+        const fileUrl = URL.createObjectURL(blob);
+
+        // 2. Abrir en nueva pestaña (invoca al visor PDF nativo del navegador listo para imprimir)
+        window.open(fileUrl, '_blank');
+
+        // 3. Limpiar caja fuerte
+        this.detalles.clear();
+        this.clienteSeleccionado = null;
+        this.clienteInputText = '';
+        this.guardando = false;
+
+        // 4. Redirigir al listado tras un breve respiro para UX
+        setTimeout(() => {
+          this.router.navigate(['/ventas']);
+        }, 1200);
+      },
+      error: () => {
+        // Si falla el PDF, igual limpiamos y redirigimos porque la venta SÍ se guardó en BD.
+        this.messageService.add({ severity: 'warn', summary: 'Error de Impresión', detail: 'La venta se registró, pero falló la red al descargar el ticket.' });
+        setTimeout(() => this.router.navigate(['/ventas']), 2000);
+      }
+    });
   }
 }

@@ -93,4 +93,11 @@ export class VentaService {
   obtenerReporteVentasPorCliente(): Observable<VentasPorClienteDTO[]> {
     return this.http.get<VentasPorClienteDTO[]>(`${this.URL}/reportes/ventas-cliente`);
   }
+
+  /**
+   * @description Solicita al backend la compilación en tiempo real del comprobante en PDF.
+   */
+  generarTicketPdf(idVenta: number): Observable<Blob> {
+    return this.http.get(`${this.URL}/${idVenta}/ticket`, { responseType: 'blob' });
+  }
 }
